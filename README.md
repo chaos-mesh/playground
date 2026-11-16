@@ -1,42 +1,54 @@
 # Chaos Mesh Playground
 
-Choose a preset in Grafana for NetworkChaos, PodChaos, IOChaos, HTTPChaos, DNSChaos, StressChaos, TimeChaos, or JVMChaos. Run it against the demo workloads and watch the measured effect next to the experiment events.
+Chaos Mesh Playground is a local demo for exploring how Kubernetes workloads respond to failures. In Grafana, you can run preset Chaos Mesh experiments and see workload metrics alongside injection and recovery events.
 
 ## Run the demo
 
-These steps use ARM64 Minikube with containerd, Linux netem and FUSE, and cgroup v2. Use a dedicated cluster for the demo. If you use a different profile, substitute its name for `minikube` in the commands below.
+Run the commands from the Playground repository root in Bash or Zsh. Install Git, Docker, Minikube, kubectl, and Helm. The daemon build requires BuildKit with Dockerfile frontend 1.6 or later for `ADD --checksum`.
+
+These steps use a dedicated Minikube cluster with containerd, Linux netem and FUSE, and cgroup v2. If you use a different profile, substitute its name for `minikube` in the commands below.
 
 ```sh
 minikube start -p minikube --keep-context --driver=docker \
   --container-runtime=containerd --kubernetes-version=v1.37.0 --cpus=2 --memory=3600
 ```
 
-The demo uses [Chaos Mesh v2.8.8](https://github.com/chaos-mesh/chaos-mesh/releases/tag/v2.8.8). Its ARM64 daemon image includes a native [toda binary](https://github.com/chaos-mesh/toda/commit/75e58ca74e259fff7a14a48d29f17daa563fdd74) for IOChaos and [chaos-tproxy v0.6.0](https://github.com/chaos-mesh/chaos-tproxy/releases/tag/v0.6.0) for HTTPChaos recovery. The DNSChaos static preset stays out of the demo until a release supports it.
+The demo uses [Chaos Mesh v2.8.8](https://github.com/chaos-mesh/chaos-mesh/releases/tag/v2.8.8). The demo's daemon image includes a native [toda binary](https://github.com/chaos-mesh/toda/commit/75e58ca74e259fff7a14a48d29f17daa563fdd74) for IOChaos and [chaos-tproxy v0.6.0](https://github.com/chaos-mesh/chaos-tproxy/releases/tag/v0.6.0) for HTTPChaos recovery. The DNSChaos static preset stays out of the demo until a release supports it.
 
-Build and load the ARM64 daemon. Set `toda_source` to your local checkout.
+Fetch the pinned `toda` commit, then build and load the daemon image for the Minikube node.
 
 ```sh
-toda_source=/path/to/toda
-build_context=$(mktemp -d)
-git -C "$toda_source" archive 75e58ca74e259fff7a14a48d29f17daa563fdd74 |
-  tar -x -C "$build_context"
-docker build --platform linux/arm64 -f deploy/chaos-daemon-arm64.Dockerfile \
-  -t playground/chaos-daemon:2.8.8-toda-arm64 "$build_context"
-rm -r "$build_context"
-minikube -p minikube image load playground/chaos-daemon:2.8.8-toda-arm64
+(
+  set -e -o pipefail
+  work_dir=$(mktemp -d)
+  trap 'rm -r "$work_dir"' EXIT
+  git init --quiet "$work_dir/toda"
+  git -C "$work_dir/toda" fetch --depth=1 https://github.com/chaos-mesh/toda.git \
+    75e58ca74e259fff7a14a48d29f17daa563fdd74
+  mkdir "$work_dir/build"
+  git -C "$work_dir/toda" archive FETCH_HEAD | tar -x -C "$work_dir/build"
+  node_arch=$(kubectl --context minikube get nodes -o jsonpath='{.items[0].status.nodeInfo.architecture}')
+  docker build --platform "linux/$node_arch" -f deploy/chaos-daemon.Dockerfile \
+    -t playground/chaos-daemon:2.8.8-toda-tproxy "$work_dir/build"
+  minikube -p minikube image load playground/chaos-daemon:2.8.8-toda-tproxy
+)
 ```
 
-Install Chaos Mesh using the matching chart from your local checkout.
+Fetch the chart from the Chaos Mesh `v2.8.8` tag and install it.
 
 ```sh
-chaos_mesh_source=/path/to/chaos-mesh
-chart_context=$(mktemp -d)
-git -C "$chaos_mesh_source" archive v2.8.8 helm/chaos-mesh |
-  tar -x -C "$chart_context"
-helm install playground-chaos "$chart_context/helm/chaos-mesh" \
-  --kube-context minikube --namespace playground-chaos --create-namespace \
-  -f deploy/chaos-mesh-values.yaml --wait
-rm -r "$chart_context"
+(
+  set -e -o pipefail
+  work_dir=$(mktemp -d)
+  trap 'rm -r "$work_dir"' EXIT
+  git init --quiet "$work_dir/chaos-mesh"
+  git -C "$work_dir/chaos-mesh" fetch --depth=1 https://github.com/chaos-mesh/chaos-mesh.git \
+    refs/tags/v2.8.8
+  git -C "$work_dir/chaos-mesh" archive FETCH_HEAD helm/chaos-mesh | tar -x -C "$work_dir"
+  helm install playground-chaos "$work_dir/helm/chaos-mesh" \
+    --kube-context minikube --namespace playground-chaos --create-namespace \
+    -f deploy/chaos-mesh-values.yaml --wait
+)
 ```
 
 Create the Grafana password once and deploy the demo.
@@ -61,39 +73,39 @@ Choose **Chaos type**, then **Action**. The **Impact** chart switches to the mea
 
 | Chaos | Action | Measurement |
 | --- | --- | --- |
-| NetworkChaos | delay | HTTP request latency |
-| | loss | Missing UDP sequence numbers |
-| | bandwidth | Received UDP payload throughput |
-| | duplicate | Duplicate UDP packets |
-| | corrupt | UDP payload checksum errors |
-| | partition | UDP reachability |
-| | netem | UDP one-way delay and packet loss |
-| PodChaos | pod-failure | HTTP probe success |
-| | pod-kill | Ready state of the old and replacement Pods |
-| | container-kill | Restarts of the target container |
-| IOChaos | latency | Test file read latency |
-| | fault | Read error rate |
-| | attrOverride | Test file permissions in octal |
-| | mistake | Read content mismatch rate |
-| HTTPChaos | abort | HTTP response failures |
-| | delay | HTTP response latency |
-| | replace | Replaced JSON response body |
-| | patch | Patched response header |
 | DNSChaos | error | DNS lookup failures |
 | | random | DNS answers that differ from the Service IP |
+| HTTPChaos | abort | HTTP response failures |
+| | delay | HTTP response latency |
+| | patch | Patched response header |
+| | replace | Replaced JSON response body |
+| IOChaos | attrOverride | Test file permissions in octal |
+| | fault | Read error rate |
+| | latency | Test file read latency |
+| | mistake | Read content mismatch rate |
+| JVMChaos | exception | Java method failures |
+| | gc | Recent JVM garbage collections and collection time |
+| | latency | Java method execution time |
+| | return | Java method return value |
+| | ruleData | Return values for matching and nonmatching inputs |
+| | stress | CPU cores used by the JVM |
+| NetworkChaos | bandwidth | Received UDP payload throughput |
+| | corrupt | UDP payload checksum errors |
+| | delay | HTTP request latency |
+| | duplicate | Duplicate UDP packets |
+| | loss | Missing UDP sequence numbers |
+| | netem | UDP one-way delay and packet loss |
+| | partition | UDP reachability |
+| PodChaos | container-kill | Restarts of the target container |
+| | pod-failure | HTTP probe success |
+| | pod-kill | Ready state of the old and replacement Pods |
 | StressChaos | CPU | CPU cores used by the target container |
 | | memory | Anonymous memory used by the target container |
 | TimeChaos | clock skew | Real-time clock offset from the Prometheus scrape time |
-| JVMChaos | return | Java method return value |
-| | latency | Java method execution time |
-| | exception | Java method failures |
-| | ruleData | Return values for matching and nonmatching inputs |
-| | gc | Recent JVM garbage collections and collection time |
-| | stress | CPU cores used by the JVM |
 
 Wait for a few baseline samples and click **Run experiment**. You can run one case at a time. The button is disabled while an experiment is starting, running, or recovering. Click **Cancel** while the experiment is starting. Starting an experiment switches a historical time range to the last five minutes with live refresh.
 
-While a timed case is running, click **Pause** to recover the workload and keep the current experiment available to start again. Click **Start** to continue that experiment before its original 30-second deadline. Click **Stop** to end the current experiment early. For Pod kill and container kill, wait for **Workload Ready** while Kubernetes restores the Deployment.
+While a timed case is running, click **Pause** to recover the workload. Once recovery finishes, you can run another preset. To resume the paused experiment, select it and click **Start** before the original 30-second deadline. **Start** is available after recovery while no other experiment is active. To end a running timed experiment early, click **Stop**. For Pod kill and container kill, wait for **Workload Ready** while Kubernetes restores the Deployment.
 
 IOChaos is scoped to a test file on an `emptyDir`. UDP cases send traffic between two demo Pods. The sender attaches an application checksum so the probe can measure corruption in received UDP payloads.
 
@@ -103,7 +115,7 @@ JVMChaos uses the existing Java 17 probe. The return preset changes `probeValue(
 
 The GC preset requests one garbage collection when the agent installs the rule. The chart estimates the collection count and total collection time over the last 10 seconds. The stress preset starts one CPU worker. Removing the rule stops the worker. The chart shows the CPU cores used by the Java process.
 
-Grafana filters event markers to the selected preset and identifies every run by UID. **Chaos Mesh recovered** marks the controller event. **Workload Ready** comes from the replacement Pod or restarted container observed through the Kubernetes API. Prometheus retains the samples for the life of its Pod. The runner keeps up to 100 prior runs in memory.
+Grafana filters event markers to the selected preset and identifies every run by UID. **Chaos Mesh recovered** marks the controller event. **Workload Ready** comes from the replacement Pod or restarted container observed through the Kubernetes API. Prometheus retains samples for up to 15 days. It has no persistent volume, so recreating the Pod clears the sample history. The runner keeps up to 100 prior runs in memory.
 
 Open the **Chaos Dashboard** tab to inspect the current run of the selected preset. Its gateway requires a Grafana session and allows read requests. The Dashboard service account can only read resources in `playground-demo`. The dedicated local Grafana instance enables HTML in provisioned text panels to embed the original Dashboard.
 
@@ -115,4 +127,10 @@ Stop port-forwarding and delete the demo namespace. Remove the Chaos Mesh releas
 ```sh
 kubectl --context minikube delete namespace playground-demo
 helm uninstall playground-chaos --kube-context minikube --namespace playground-chaos
+```
+
+Helm leaves the `playground-chaos` namespace and the Chaos Mesh CRDs in the cluster. To remove the entire cluster, delete the Minikube profile you created exclusively for this demo. This deletes all workloads and data in that profile.
+
+```sh
+minikube delete -p minikube
 ```

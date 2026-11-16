@@ -6,7 +6,7 @@ Chaos Mesh Playground is a Kubernetes demo that runs preset experiments from Gra
 
 - `scenarios/` holds JSON presets for NetworkChaos, PodChaos, IOChaos, HTTPChaos, DNSChaos, and StressChaos. Its Kustomization packages the enabled presets into the runner ConfigMap.
 - `runner/` contains the Python API, its unit tests, and its Kubernetes permissions. `workloads/` contains Podinfo, Blackbox Exporter, and the UDP, file I/O, HTTP, DNS, and container resource probes.
-- `grafana/` contains the dashboard, provisioning, and same-origin gateway. `prometheus/` configures metric collection. The root `kustomization.yaml` deploys the demo. `deploy/` contains the namespace and the ARM64 daemon image recipe.
+- `grafana/` contains the dashboard, provisioning, and same-origin gateway. `prometheus/` configures metric collection. The root `kustomization.yaml` deploys the demo. `deploy/` contains the namespace and the daemon image recipe.
 
 ## Development
 
@@ -17,7 +17,7 @@ Chaos Mesh Playground is a Kubernetes demo that runs preset experiments from Gra
 ## Testing and Local Deployment
 
 - Run `python3 -B -m unittest discover -s runner` for runner tests and `kubectl kustomize .` to render the manifests.
-- Follow [README.md](README.md) to deploy into the `minikube` context and open Grafana on port 3300. The README also covers the native `toda` image required by IOChaos on ARM64 with Chaos Mesh 2.8.8.
+- Follow [README.md](README.md) to deploy into the `minikube` context and open Grafana on port 3300. The README also covers building the demo daemon image with `toda` for IOChaos and `tproxy` for HTTPChaos recovery.
 - In Kubernetes, verify the actual fault and the workload measurement. Check that timed faults recover and that one-shot faults show Kubernetes workload readiness. For changes to Grafana controls or annotations, run the same preset twice and verify that events are attributed to the correct run UID.
 
 ## Build Caches and Cleanup

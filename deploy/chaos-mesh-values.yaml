@@ -14,7 +14,7 @@ chaosDaemon:
   image:
     registry: docker.io
     repository: playground/chaos-daemon
-    tag: 2.8.8-toda-arm64
+    tag: 2.8.8-toda-tproxy
   imagePullPolicy: Never
 
 dnsServer:
