@@ -2,6 +2,8 @@
 
 Chaos Mesh Playground is a local demo for exploring how Kubernetes workloads respond to failures. In Grafana, you can run preset Chaos Mesh experiments and see workload metrics alongside injection and recovery events.
 
+![Grafana showing HTTP request latency before, during, and after a NetworkChaos delay experiment](docs/network-chaos-delay.png)
+
 ## Run the demo
 
 Run the commands from the Playground repository root in Bash or Zsh. Install Git, Docker, Minikube, kubectl, and Helm. The daemon build requires BuildKit with Dockerfile frontend 1.6 or later for `ADD --checksum`.
