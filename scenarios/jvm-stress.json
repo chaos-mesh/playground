@@ -1,0 +1,31 @@
+{
+  "apiVersion": "chaos-mesh.org/v1alpha1",
+  "kind": "JVMChaos",
+  "metadata": {
+    "name": "jvm-stress",
+    "namespace": "playground-demo",
+    "labels": {
+      "app.kubernetes.io/managed-by": "playground-runner"
+    },
+    "annotations": {
+      "playground.chaos-mesh.org/title": "JVM CPU stress · 1 worker"
+    }
+  },
+  "spec": {
+    "mode": "one",
+    "duration": "30s",
+    "selector": {
+      "namespaces": [
+        "playground-demo"
+      ],
+      "labelSelectors": {
+        "app": "playground-jvm-probe"
+      }
+    },
+    "containerNames": [
+      "probe"
+    ],
+    "action": "stress",
+    "cpuCount": 1
+  }
+}

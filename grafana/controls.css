@@ -1,0 +1,60 @@
+:root {
+  color-scheme: light dark;
+  color: light-dark(#202226, #e8e9ed);
+  font: 14px/1.4 system-ui, sans-serif;
+}
+
+body {
+  margin: 0;
+}
+
+.controls,
+.actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.controls {
+  padding: 6px 4px;
+}
+
+button {
+  font: inherit;
+  font-weight: 600;
+  min-height: 36px;
+  padding: 6px 12px;
+  color: inherit;
+  background: light-dark(#e8e9ed, #292c33);
+  border: 1px solid light-dark(#d0d2d7, #3c414b);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+button.primary {
+  color: white;
+  background: #2856ac;
+  border-color: #4778cc;
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+button:focus-visible {
+  outline: 2px solid #568aff;
+  outline-offset: 2px;
+}
+
+@media (hover: hover) {
+  button:not(:disabled):hover {
+    filter: brightness(1.15);
+  }
+}
+
+#status {
+  margin: 0 0 0 4px;
+  overflow-wrap: anywhere;
+}

@@ -10,6 +10,8 @@ resources:
   - workloads/http.yaml
   - workloads/dns.yaml
   - workloads/stress.yaml
+  - workloads/time.yaml
+  - workloads/jvm.yaml
   - scenarios
   - prometheus/deployment.yaml
   - runner/deployment.yaml
@@ -21,6 +23,12 @@ configMapGenerator:
   - name: stress-probe-source
     files:
       - workloads/stress_probe.py
+  - name: time-probe-source
+    files:
+      - workloads/time_probe.py
+  - name: jvm-probe-source
+    files:
+      - workloads/JvmProbe.java
   - name: dns-probe-source
     files:
       - workloads/dns_probe.py
@@ -46,3 +54,8 @@ configMapGenerator:
   - name: grafana-gateway
     files:
       - grafana/nginx.conf
+  - name: grafana-controls
+    files:
+      - grafana/controls.html
+      - grafana/controls.css
+      - grafana/controls.js

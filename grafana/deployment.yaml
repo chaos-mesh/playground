@@ -57,6 +57,9 @@ spec:
             - name: gateway
               mountPath: /etc/nginx/conf.d
               readOnly: true
+            - name: controls
+              mountPath: /srv/playground-controls
+              readOnly: true
       volumes:
         - name: dashboard
           configMap:
@@ -72,6 +75,9 @@ spec:
         - name: gateway
           configMap:
             name: grafana-gateway
+        - name: controls
+          configMap:
+            name: grafana-controls
 ---
 apiVersion: v1
 kind: Service

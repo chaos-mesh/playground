@@ -12,7 +12,7 @@ rules:
     resources: ["pods"]
     verbs: ["list"]
   - apiGroups: ["chaos-mesh.org"]
-    resources: ["networkchaos", "podchaos", "iochaos", "stresschaos", "dnschaos", "httpchaos"]
+    resources: ["networkchaos", "podchaos", "iochaos", "stresschaos", "dnschaos", "httpchaos", "timechaos", "jvmchaos"]
     verbs: ["create", "list", "update"]
   - apiGroups: ["chaos-mesh.org"]
     resources: ["networkchaos"]
@@ -37,6 +37,14 @@ rules:
   - apiGroups: ["chaos-mesh.org"]
     resources: ["stresschaos"]
     resourceNames: ["stress-cpu", "stress-memory"]
+    verbs: ["get", "patch", "delete"]
+  - apiGroups: ["chaos-mesh.org"]
+    resources: ["timechaos"]
+    resourceNames: ["time-skew"]
+    verbs: ["get", "patch", "delete"]
+  - apiGroups: ["chaos-mesh.org"]
+    resources: ["jvmchaos"]
+    resourceNames: ["jvm-return", "jvm-latency", "jvm-exception", "jvm-rule-data", "jvm-gc", "jvm-stress"]
     verbs: ["get", "patch", "delete"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1

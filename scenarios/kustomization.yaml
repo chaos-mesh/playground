@@ -25,3 +25,10 @@ configMapGenerator:
       - dns-random.json
       - stress-cpu.json
       - stress-memory.json
+      - time-skew.json
+      - jvm-return.json
+      - jvm-latency.json
+      - jvm-exception.json
+      - jvm-rule-data.json
+      - jvm-gc.json
+      - jvm-stress.json

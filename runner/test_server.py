@@ -1,4 +1,5 @@
 import copy
+import datetime
 import json
 import threading
 import unittest
@@ -7,7 +8,7 @@ import urllib.request
 from http.server import ThreadingHTTPServer
 from pathlib import Path
 
-from server import APIError, Handler, READY_ANNOTATION, Runner, annotations, run_status
+from server import APIError, Handler, PAUSE_ANNOTATION, READY_ANNOTATION, Runner, annotations, run_status
 
 PRESET = json.loads((Path(__file__).parent.parent / "scenarios/network-delay.json").read_text())
 
@@ -17,7 +18,8 @@ PRESETS = {"network-delay": PRESET}
 
 def experiment(uid, phase="Run", recovered=False, preset=PRESET):
     obj = copy.deepcopy(preset)
-    obj["metadata"].update(uid=uid, resourceVersion="1")
+    created = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
+    obj["metadata"].update(uid=uid, resourceVersion="1", creationTimestamp=created)
     events = [{"type": "Succeeded", "operation": "Apply", "timestamp": "2026-11-14T01:00:00Z"}]
     if recovered:
         events.append({"type": "Succeeded", "operation": "Recover", "timestamp": "2026-11-14T01:00:30Z"})
@@ -51,6 +53,8 @@ class FakeKubernetes:
             return copy.deepcopy(self.current)
         if method == "DELETE":
             assert body["preconditions"]["uid"] == self.current["metadata"]["uid"]
+            if "resourceVersion" in body["preconditions"]:
+                assert body["preconditions"]["resourceVersion"] == self.current["metadata"]["resourceVersion"]
             self.deleted.append(self.current["metadata"]["uid"])
             self.current = None
             return {}
@@ -140,6 +144,142 @@ class RunnerTests(unittest.TestCase):
         obj["status"]["conditions"] = [{"type": "AllRecovered", "status": "True"}]
         with self.assertRaises(APIError):
             Runner(FakeKubernetes(obj), PRESETS).start()
+
+    def test_controls_block_all_presets_while_a_run_is_active(self):
+        case = "network-bandwidth"
+        preset = json.loads((Path(__file__).parent.parent / f"scenarios/{case}.json").read_text())
+        obj = experiment("run-1")
+        obj["status"]["conditions"].append({"type": "AllInjected", "status": "True"})
+        runner = Runner(FakeKubernetes(obj), {**PRESETS, case: preset})
+        selected = runner.controls("network-delay")
+        self.assertFalse(selected["canRun"])
+        self.assertTrue(selected["canPause"])
+        self.assertTrue(selected["canStop"])
+        self.assertFalse(selected["canCancel"])
+        other = runner.controls(case)
+        self.assertEqual(other["activeCase"], "network-delay")
+        self.assertFalse(other["canRun"])
+        self.assertFalse(other["canStop"])
+        obj["status"]["experiment"]["desiredPhase"] = "Stop"
+        self.assertFalse(runner.controls("network-delay")["canStop"])
+        self.assertFalse(runner.controls(case)["canRun"])
+
+    def test_pending_partial_injection_can_be_cancelled(self):
+        obj = experiment("partial")
+        obj["status"]["experiment"]["containerRecords"][1].update(phase="Not Injected", events=[])
+        kube = FakeKubernetes(obj)
+        runner = Runner(kube, PRESETS)
+        controls = runner.controls("network-delay")
+        self.assertEqual(controls["state"], "pending")
+        self.assertTrue(controls["canCancel"])
+        self.assertFalse(controls["canStop"])
+        self.assertEqual(runner.stop("network-delay", "partial", cancel=True)["state"], "recovering")
+        controls = runner.controls("network-delay")
+        self.assertFalse(controls["canCancel"])
+        self.assertFalse(controls["canRun"])
+        self.assertEqual(kube.current["metadata"]["annotations"][PAUSE_ANNOTATION], "true")
+
+    def test_one_shot_cancel_only_before_successful_apply(self):
+        case = "pod-pod-kill"
+        preset = json.loads((Path(__file__).parent.parent / "scenarios" / f"{case}.json").read_text())
+        kube = FakeKubernetes(experiment("applied", preset=preset))
+        runner = Runner(kube, {case: preset})
+        self.assertFalse(runner.controls(case)["canCancel"])
+        with self.assertRaises(APIError):
+            runner.stop(case, "applied", cancel=True)
+
+        kube.current = experiment("pending", preset=preset)
+        kube.current["status"]["experiment"]["containerRecords"] = []
+        self.assertTrue(runner.controls(case)["canCancel"])
+        with self.assertRaises(APIError):
+            runner.stop(case, "applied", cancel=True)
+        runner.stop(case, "pending", cancel=True)
+        self.assertEqual(kube.deleted, ["pending"])
+        self.assertTrue(runner.controls(case)["canRun"])
+
+    def test_stop_ends_a_pause_in_progress_or_already_recovered(self):
+        for recovery_complete in (False, True):
+            with self.subTest(recovery_complete=recovery_complete):
+                obj = experiment("race")
+                obj["status"]["conditions"].append({"type": "AllInjected", "status": "True"})
+                kube = FakeKubernetes(obj)
+                runner = Runner(kube, PRESETS)
+                runner.stop("network-delay", "race", resumable=True)
+
+                def complete_recovery():
+                    old_annotations = kube.current["metadata"]["annotations"]
+                    kube.current = experiment("race", "Stop", True)
+                    kube.current["metadata"]["annotations"] = old_annotations
+
+                if recovery_complete:
+                    complete_recovery()
+                    self.assertTrue(runner.controls("network-delay")["canStart"])
+
+                self.assertTrue(runner.stop("network-delay", "race")["success"])
+                if not recovery_complete:
+                    complete_recovery()
+                self.assertEqual(runner.controls("network-delay")["state"], "recovered")
+                self.assertFalse(runner.controls("network-delay")["canStart"])
+
+    def test_start_continues_the_same_paused_run_and_reserves_the_slot(self):
+        obj = experiment("run-1")
+        obj["status"]["conditions"].append({"type": "AllInjected", "status": "True"})
+        kube = FakeKubernetes(obj)
+        runner = Runner(kube, PRESETS)
+        runner.stop("network-delay", "run-1", resumable=True)
+        self.assertFalse(runner.controls("network-delay")["canRun"])
+
+        metadata_annotations = kube.current["metadata"]["annotations"]
+        kube.current = experiment("run-1", "Stop", True)
+        kube.current["metadata"]["annotations"] = metadata_annotations
+        self.assertTrue(runner.controls("network-delay")["canStart"])
+        with self.assertRaises(APIError) as stale:
+            runner.resume("network-delay", "older-run")
+        self.assertEqual(stale.exception.status, 409)
+        result = runner.resume("network-delay", "run-1")
+        self.assertEqual(result["runUID"], "run-1")
+        self.assertEqual(kube.current["metadata"]["annotations"][PAUSE_ANNOTATION], "false")
+        self.assertEqual(runner.controls("network-delay")["state"], "pending")
+        self.assertFalse(runner.controls("network-delay")["canRun"])
+        with self.assertRaises(APIError):
+            runner.start("network-delay")
+        kube.current["status"]["experiment"]["desiredPhase"] = "Run"
+        for record in kube.current["status"]["experiment"]["containerRecords"]:
+            record.update(phase="Injected", injectedCount=1)
+        kube.current["status"]["conditions"].append({"type": "AllInjected", "status": "True"})
+        self.assertTrue(runner.controls("network-delay")["canStop"])
+        self.assertEqual(kube.deleted, [])
+
+    def test_expired_or_stopped_run_cannot_be_started(self):
+        obj = experiment("run-1", "Stop", True)
+        obj["metadata"]["annotations"][PAUSE_ANNOTATION] = "true"
+        obj["metadata"]["creationTimestamp"] = "2020-01-01T00:00:00Z"
+        kube = FakeKubernetes(obj)
+        runner = Runner(kube, PRESETS)
+        self.assertFalse(runner.controls("network-delay")["canStart"])
+        self.assertTrue(runner.controls("network-delay")["canRun"])
+        with self.assertRaises(APIError):
+            runner.resume("network-delay", "run-1")
+
+        kube.current = experiment("run-2")
+        runner.stop("network-delay", "run-2")
+        records = kube.current["status"]["experiment"]
+        records["desiredPhase"] = "Stop"
+        for record in records["containerRecords"]:
+            record["phase"] = "Not Injected"
+        self.assertFalse(runner.controls("network-delay")["canStart"])
+
+    def test_resumed_run_keeps_each_event_in_grafana(self):
+        obj = experiment("run-1", "Stop", True)
+        events = obj["status"]["experiment"]["containerRecords"][0]["events"]
+        events.extend([
+            {"type": "Succeeded", "operation": "Apply", "timestamp": "2026-11-14T01:01:00Z"},
+            {"type": "Succeeded", "operation": "Recover", "timestamp": "2026-11-14T01:01:30Z"},
+        ])
+        lines = Runner(FakeKubernetes(obj), PRESETS).metrics().splitlines()
+        self.assertEqual(len([line for line in lines if 'run_uid="run-1"' in line]), 4)
+        self.assertTrue(any("1794618060000" in line and 'event="injected"' in line for line in lines))
+        self.assertTrue(any("1794618090000" in line and 'event="recovered"' in line for line in lines))
 
     def test_stop_requests_pause_without_deleting_record(self):
         kube = FakeKubernetes(experiment("run-1"))

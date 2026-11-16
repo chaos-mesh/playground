@@ -27,3 +27,9 @@ scrape_configs:
   - job_name: stress-probe
     static_configs:
       - targets: [stress-probe:8080]
+  - job_name: time-probe
+    static_configs:
+      - targets: [time-probe:8080]
+  - job_name: jvm-probe
+    static_configs:
+      - targets: [jvm-probe:8080]

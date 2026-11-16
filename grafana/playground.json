@@ -124,7 +124,7 @@
         "spec": {
           "id": 1,
           "title": "${kind} · ${case:text}",
-          "description": "Run the selected preset. Stop ends timed experiments early. Kubernetes restores the workload after one-shot actions.",
+          "description": "Run the selected preset, or pause, start, and stop the current timed experiment.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -136,74 +136,12 @@
           },
           "vizConfig": {
             "kind": "VizConfig",
-            "group": "canvas",
+            "group": "text",
             "version": "",
             "spec": {
               "options": {
-                "inlineEditing": false,
-                "root": {
-                  "elements": [
-                    {
-                      "config": {
-                        "align": "center",
-                        "api": {
-                          "contentType": "application/json",
-                          "data": "{\"case\":\"${case}\"}",
-                          "endpoint": "/playground-api/run",
-                          "method": "POST",
-                          "successMessage": "Experiment submitted"
-                        },
-                        "size": 14,
-                        "style": {
-                          "variant": "primary"
-                        },
-                        "text": {
-                          "fixed": "Run experiment",
-                          "mode": "fixed"
-                        }
-                      },
-                      "name": "Run experiment",
-                      "placement": {
-                        "height": 36,
-                        "left": 12,
-                        "top": 12,
-                        "width": 144
-                      },
-                      "type": "button"
-                    },
-                    {
-                      "config": {
-                        "align": "center",
-                        "api": {
-                          "contentType": "application/json",
-                          "data": "{\"case\":\"${case}\"}",
-                          "endpoint": "/playground-api/stop",
-                          "method": "POST",
-                          "successMessage": "Recovery requested"
-                        },
-                        "size": 14,
-                        "style": {
-                          "variant": "secondary"
-                        },
-                        "text": {
-                          "fixed": "Stop",
-                          "mode": "fixed"
-                        }
-                      },
-                      "name": "Stop",
-                      "placement": {
-                        "height": 36,
-                        "left": 166,
-                        "top": 12,
-                        "width": 74
-                      },
-                      "type": "button"
-                    }
-                  ],
-                  "name": "Experiment controls",
-                  "type": "frame"
-                },
-                "showAdvancedTypes": true
+                "mode": "html",
+                "content": "<iframe title=\"Experiment controls\" src=\"/playground-controls/?case=${case:percentencode}\" style=\"display:block;width:100%;height:100%;border:0;color-scheme:inherit\"></iframe>"
               },
               "fieldConfig": {
                 "defaults": {},
@@ -681,6 +619,186 @@
                       }
                     },
                     "refId": "metric_22",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "playground-prometheus"
+                      },
+                      "spec": {
+                        "expr": "(playground_time_realtime_seconds - timestamp(playground_time_realtime_seconds)) and on () playground_scenario{scenario=\"${case}\",scenario=~\"time-skew\"}",
+                        "legendFormat": "Real-time clock offset",
+                        "range": true
+                      }
+                    },
+                    "refId": "metric_23",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "playground-prometheus"
+                      },
+                      "spec": {
+                        "expr": "(playground_jvm_method_return_value) and on () playground_scenario{scenario=\"${case}\",scenario=~\"jvm-return\"}",
+                        "legendFormat": "Java method return value",
+                        "range": true
+                      }
+                    },
+                    "refId": "metric_24",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "playground-prometheus"
+                      },
+                      "spec": {
+                        "expr": "(playground_jvm_method_latency_milliseconds) and on () playground_scenario{scenario=\"${case}\",scenario=~\"jvm-latency\"}",
+                        "legendFormat": "Java method latency",
+                        "range": true
+                      }
+                    },
+                    "refId": "metric_25",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "playground-prometheus"
+                      },
+                      "spec": {
+                        "expr": "(100 * playground_jvm_method_failed) and on () playground_scenario{scenario=\"${case}\",scenario=~\"jvm-exception\"}",
+                        "legendFormat": "Java method failures",
+                        "range": true
+                      }
+                    },
+                    "refId": "metric_26",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "playground-prometheus"
+                      },
+                      "spec": {
+                        "expr": "(playground_jvm_rule_return_value{input=\"7\"}) and on () playground_scenario{scenario=\"${case}\",scenario=~\"jvm-rule-data\"}",
+                        "legendFormat": "Rule return · input 7",
+                        "range": true
+                      }
+                    },
+                    "refId": "metric_27",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "playground-prometheus"
+                      },
+                      "spec": {
+                        "expr": "(playground_jvm_rule_return_value{input=\"8\"}) and on () playground_scenario{scenario=\"${case}\",scenario=~\"jvm-rule-data\"}",
+                        "legendFormat": "Rule return · input 8",
+                        "range": true
+                      }
+                    },
+                    "refId": "metric_28",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "playground-prometheus"
+                      },
+                      "spec": {
+                        "expr": "(increase(playground_jvm_gc_collections_total[10s])) and on () playground_scenario{scenario=\"${case}\",scenario=~\"jvm-gc\"}",
+                        "legendFormat": "Recent JVM collections",
+                        "range": true
+                      }
+                    },
+                    "refId": "metric_29",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "playground-prometheus"
+                      },
+                      "spec": {
+                        "expr": "(rate(playground_jvm_cpu_seconds_total[6s])) and on () playground_scenario{scenario=\"${case}\",scenario=~\"jvm-stress\"}",
+                        "legendFormat": "JVM CPU usage",
+                        "range": true
+                      }
+                    },
+                    "refId": "metric_30",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "playground-prometheus"
+                      },
+                      "spec": {
+                        "expr": "(increase(playground_jvm_gc_collection_seconds_total[10s])) and on () playground_scenario{scenario=\"${case}\",scenario=~\"jvm-gc\"}",
+                        "legendFormat": "Recent JVM collection time",
+                        "range": true
+                      }
+                    },
+                    "refId": "metric_31",
                     "hidden": false
                   }
                 }
@@ -1165,6 +1283,172 @@
                         "value": "Container anonymous memory"
                       }
                     ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byFrameRefID",
+                      "options": "metric_23"
+                    },
+                    "properties": [
+                      {
+                        "id": "unit",
+                        "value": "s"
+                      },
+                      {
+                        "id": "custom.axisLabel",
+                        "value": "Real-time clock offset"
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byFrameRefID",
+                      "options": "metric_24"
+                    },
+                    "properties": [
+                      {
+                        "id": "unit",
+                        "value": "none"
+                      },
+                      {
+                        "id": "custom.axisLabel",
+                        "value": "Java method return value"
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byFrameRefID",
+                      "options": "metric_25"
+                    },
+                    "properties": [
+                      {
+                        "id": "unit",
+                        "value": "ms"
+                      },
+                      {
+                        "id": "custom.axisLabel",
+                        "value": "Java method latency"
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byFrameRefID",
+                      "options": "metric_26"
+                    },
+                    "properties": [
+                      {
+                        "id": "unit",
+                        "value": "percent"
+                      },
+                      {
+                        "id": "custom.axisLabel",
+                        "value": "Java method failures"
+                      },
+                      {
+                        "id": "max",
+                        "value": 100
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byFrameRefID",
+                      "options": "metric_27"
+                    },
+                    "properties": [
+                      {
+                        "id": "unit",
+                        "value": "none"
+                      },
+                      {
+                        "id": "custom.axisLabel",
+                        "value": "Rule return value"
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byFrameRefID",
+                      "options": "metric_28"
+                    },
+                    "properties": [
+                      {
+                        "id": "unit",
+                        "value": "none"
+                      },
+                      {
+                        "id": "custom.axisLabel",
+                        "value": "Rule return value"
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "orange"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byFrameRefID",
+                      "options": "metric_29"
+                    },
+                    "properties": [
+                      {
+                        "id": "unit",
+                        "value": "short"
+                      },
+                      {
+                        "id": "custom.axisLabel",
+                        "value": "Collections in the last 10 seconds"
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byFrameRefID",
+                      "options": "metric_30"
+                    },
+                    "properties": [
+                      {
+                        "id": "unit",
+                        "value": "short"
+                      },
+                      {
+                        "id": "custom.axisLabel",
+                        "value": "CPU cores"
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byFrameRefID",
+                      "options": "metric_31"
+                    },
+                    "properties": [
+                      {
+                        "id": "unit",
+                        "value": "s"
+                      },
+                      {
+                        "id": "custom.axisLabel",
+                        "value": "Collection time in the last 10 seconds"
+                      },
+                      {
+                        "id": "custom.axisPlacement",
+                        "value": "right"
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "orange"
+                        }
+                      }
+                    ]
                   }
                 ]
               }
@@ -1300,6 +1584,46 @@
                       }
                     },
                     "refId": "5",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "playground-prometheus"
+                      },
+                      "spec": {
+                        "expr": "up{job=\"time-probe\"} and on () playground_scenario{scenario=\"${case}\",kind=\"TimeChaos\"}",
+                        "legendFormat": "time-probe",
+                        "range": true
+                      }
+                    },
+                    "refId": "6",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "playground-prometheus"
+                      },
+                      "spec": {
+                        "expr": "up{job=\"jvm-probe\"} and on () playground_scenario{scenario=\"${case}\",kind=\"JVMChaos\"}",
+                        "legendFormat": "jvm-probe",
+                        "range": true
+                      }
+                    },
+                    "refId": "7",
                     "hidden": false
                   }
                 }
@@ -1481,7 +1805,7 @@
         "kind": "CustomVariable",
         "spec": {
           "name": "kind",
-          "query": "DNSChaos,HTTPChaos,IOChaos,NetworkChaos,PodChaos,StressChaos",
+          "query": "DNSChaos,HTTPChaos,IOChaos,JVMChaos,NetworkChaos,PodChaos,StressChaos,TimeChaos",
           "current": {
             "text": "NetworkChaos",
             "value": "NetworkChaos"
@@ -1503,6 +1827,11 @@
               "value": "IOChaos"
             },
             {
+              "selected": false,
+              "text": "JVMChaos",
+              "value": "JVMChaos"
+            },
+            {
               "selected": true,
               "text": "NetworkChaos",
               "value": "NetworkChaos"
@@ -1516,6 +1845,11 @@
               "selected": false,
               "text": "StressChaos",
               "value": "StressChaos"
+            },
+            {
+              "selected": false,
+              "text": "TimeChaos",
+              "value": "TimeChaos"
             }
           ],
           "multi": false,

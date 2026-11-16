@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Experiment controls</title>
+  <link rel="stylesheet" href="controls.css">
+  <script src="controls.js" defer></script>
+</head>
+<body>
+  <main class="controls" aria-label="Experiment controls">
+    <div class="actions" role="group" aria-label="Experiment actions">
+      <button type="button" class="primary" data-action="run" disabled>Run experiment</button>
+      <button type="button" data-action="cancel" hidden>Cancel</button>
+      <button type="button" class="primary" data-action="start" hidden>Start</button>
+      <button type="button" data-action="pause" hidden>Pause</button>
+      <button type="button" data-action="stop" hidden>Stop</button>
+    </div>
+    <p id="status" role="status">Checking experiment status…</p>
+  </main>
+</body>
+</html>

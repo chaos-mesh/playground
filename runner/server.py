@@ -2,6 +2,7 @@ import copy
 import datetime
 import json
 import os
+import re
 import ssl
 import threading
 import time
@@ -14,9 +15,13 @@ from pathlib import Path
 
 NAMESPACE_API = "/apis/chaos-mesh.org/v1alpha1/namespaces/playground-demo/"
 POD_PATH = "/api/v1/namespaces/playground-demo/pods?labelSelector=app%3Dplayground-podinfo"
-TERMINAL = {"recovered", "stopped"}
+INACTIVE = {"paused", "recovered", "stopped"}
 ONE_SHOT = {"pod-kill", "container-kill"}
 READY_ANNOTATION = "playground.chaos-mesh.org/workload-ready-at"
+PAUSE_ANNOTATION = "experiment.chaos-mesh.org/pause"
+STOP_ANNOTATION = "playground.chaos-mesh.org/stopped"
+START_AFTER_INJECTIONS = "playground.chaos-mesh.org/start-after-injections"
+DURATION_SECONDS = {"ns": 1e-9, "us": 1e-6, "µs": 1e-6, "μs": 1e-6, "ms": 1e-3, "s": 1, "m": 60, "h": 3600}
 
 
 class APIError(Exception):
@@ -52,6 +57,32 @@ def event_time(timestamp):
     return int(datetime.datetime.fromisoformat(timestamp.replace("Z", "+00:00")).timestamp() * 1000)
 
 
+def duration_elapsed(obj):
+    duration = obj["spec"].get("duration")
+    if not duration:
+        return False
+    parts = re.findall(r"([0-9]+(?:\.[0-9]*)?|\.[0-9]+)(ns|us|µs|μs|ms|s|m|h)", duration)
+    seconds = sum(float(value) * DURATION_SECONDS[unit] for value, unit in parts)
+    if duration.startswith("-"):
+        seconds = -seconds
+    return time.time() >= event_time(obj["metadata"]["creationTimestamp"]) / 1000 + seconds
+
+
+def injection_count(records):
+    return sum(record.get("injectedCount", 0) for record in records)
+
+
+def is_one_shot(obj):
+    return obj["kind"] == "PodChaos" and obj["spec"]["action"] in ONE_SHOT
+
+
+def can_cancel(run, one_shot):
+    return run["state"] == "pending" and (
+        not one_shot or not any(event["operation"] == "Apply" and event["type"] == "Succeeded"
+                                for event in run["events"])
+    )
+
+
 def run_status(obj):
     status = obj.get("status", {})
     experiment = status.get("experiment", {})
@@ -62,12 +93,21 @@ def run_status(obj):
     applied = any(event["type"] == "Succeeded" and event["operation"] == "Apply" for event in events)
     recovered = any(event["type"] == "Succeeded" and event["operation"] == "Recover" for event in events)
     complete = experiment.get("desiredPhase") == "Stop" and all(record["phase"] == "Not Injected" for record in records)
-    one_shot = obj["kind"] == "PodChaos" and obj["spec"]["action"] in ONE_SHOT
-    if complete and not one_shot:
-        state = "recovered" if applied and recovered else "stopped"
-    elif obj["metadata"].get("deletionTimestamp"):
+    one_shot = is_one_shot(obj)
+    metadata = obj["metadata"]
+    marks = metadata.get("annotations", {})
+    paused = not one_shot and marks.get(PAUSE_ANNOTATION) == "true"
+    resuming = not paused and marks.get(START_AFTER_INJECTIONS) == str(injection_count(records))
+    if metadata.get("deletionTimestamp"):
         state = "recovering"
-    elif experiment.get("desiredPhase") == "Stop":
+    elif resuming and not duration_elapsed(obj):
+        state = "pending"
+    elif complete and not one_shot:
+        if paused and marks.get(STOP_ANNOTATION) != "true" and not duration_elapsed(obj):
+            state = "paused"
+        else:
+            state = "recovered" if applied and recovered else "stopped"
+    elif paused or experiment.get("desiredPhase") == "Stop":
         state = "recovering"
     elif conditions.get("AllInjected") == "True" and applied:
         state = "waiting-for-workload" if one_shot else "running"
@@ -75,10 +115,10 @@ def run_status(obj):
         state = "pending"
     return {
         "state": state,
-        "action": obj["spec"].get("action", obj["metadata"]["name"].partition("-")[2]),
-        "case": obj["metadata"]["name"],
+        "action": obj["spec"].get("action", metadata["name"].partition("-")[2]),
+        "case": metadata["name"],
         "kind": obj["kind"],
-        "runUID": obj["metadata"]["uid"],
+        "runUID": metadata["uid"],
         "events": events,
         "conditions": conditions,
     }
@@ -184,24 +224,43 @@ class Runner:
             experiments.extend(obj for obj in objects["items"] if obj["metadata"]["name"] in self.presets)
         return experiments
 
+    def current_runs(self, pods):
+        return {run["case"]: run for run in (self.observe(obj, pods) for obj in self.current_experiments())}
+
     @staticmethod
-    def require_owned(obj):
+    def active_run(runs):
+        return next((run for run in runs.values() if run["state"] not in INACTIVE), None)
+
+    @staticmethod
+    def require_available(runs):
+        active = Runner.active_run(runs)
+        if active:
+            raise APIError(409, f'Wait for {active["case"]} to finish')
+
+    @staticmethod
+    def require_owned(obj, uid=None):
         if obj["metadata"].get("labels", {}).get("app.kubernetes.io/managed-by") != "playground-runner":
             raise APIError(409, f'{obj["metadata"]["name"]} is not owned by this runner')
+        if uid is not None and obj["metadata"]["uid"] != uid:
+            raise APIError(409, "The selected experiment has changed")
+
+    def patch_run(self, path, obj, annotations):
+        return self.kube.request("PATCH", path, {"metadata": {
+            "resourceVersion": obj["metadata"]["resourceVersion"],
+            "annotations": annotations,
+        }})
 
     def start(self, case="network-delay"):
         path = self.object_path(case)
         with self.lock:
             pods = self.pods()
-            for obj in self.current_experiments():
-                if self.observe(obj, pods)["state"] not in TERMINAL:
-                    raise APIError(409, f'Wait for {obj["metadata"]["name"]} to finish')
+            self.require_available(self.current_runs(pods))
 
             current = self.current(path)
             if current is not None:
                 self.require_owned(current)
                 run = self.observe(current, pods)
-                if run["state"] not in TERMINAL:
+                if run["state"] not in INACTIVE:
                     raise APIError(409, "Previous run has not finished")
                 uid = run["runUID"]
                 self.history[uid] = run
@@ -216,24 +275,79 @@ class Runner:
             created = self.kube.request("POST", self.collection(case), copy.deepcopy(self.preset(case)))
             return {"success": True, "runUID": created["metadata"]["uid"], "state": "pending"}
 
-    def stop(self, case="network-delay"):
+    def stop(self, case="network-delay", uid=None, *, resumable=False, cancel=False):
         path = self.object_path(case)
-        preset = self.preset(case)
-        if preset["kind"] == "PodChaos" and preset["spec"]["action"] in ONE_SHOT:
+        one_shot = is_one_shot(self.preset(case))
+        if one_shot and not cancel:
             raise APIError(409, "One-shot actions finish when Kubernetes restores the workload")
         with self.lock:
             current = self.current(path)
             if current is None:
                 return {"success": True, "state": "idle", "runUID": None}
-            self.require_owned(current)
+            self.require_owned(current, uid)
             run = run_status(current)
-            if run["state"] in TERMINAL:
-                return {"success": True, "state": run["state"], "runUID": run["runUID"]}
-            self.kube.request("PATCH", path, {"metadata": {
-                "resourceVersion": current["metadata"]["resourceVersion"],
-                "annotations": {"experiment.chaos-mesh.org/pause": "true"},
-            }})
-            return {"success": True, "state": "recovering", "runUID": run["runUID"]}
+            state = run["state"]
+            if cancel:
+                if not can_cancel(run, one_shot):
+                    raise APIError(409, "Only pending experiments can be cancelled")
+                if one_shot:
+                    self.kube.request("DELETE", path, {"preconditions": {
+                        "uid": run["runUID"], "resourceVersion": current["metadata"]["resourceVersion"],
+                    }})
+                    return {"success": True, "state": "recovering", "runUID": run["runUID"]}
+
+            marks = current["metadata"].get("annotations", {})
+            ends_pause = (
+                not resumable
+                and state in {"paused", "recovering"}
+                and marks.get(PAUSE_ANNOTATION) == "true"
+                and marks.get(STOP_ANNOTATION) != "true"
+            )
+            if (state in INACTIVE or state == "recovering") and not ends_pause:
+                return {"success": True, "state": state, "runUID": run["runUID"]}
+            updated = self.patch_run(path, current, {
+                PAUSE_ANNOTATION: "true",
+                STOP_ANNOTATION: None if resumable else "true",
+                START_AFTER_INJECTIONS: None,
+            })
+            return {"success": True, "state": run_status(updated)["state"], "runUID": run["runUID"]}
+
+    def resume(self, case, uid):
+        path = self.object_path(case)
+        with self.lock:
+            self.require_available(self.current_runs(self.pods()))
+            current = self.current(path)
+            if current is None:
+                raise APIError(404, "The selected experiment no longer exists")
+            self.require_owned(current, uid)
+            if run_status(current)["state"] != "paused":
+                raise APIError(409, "Start is available while a paused experiment has time remaining")
+            records = current.get("status", {}).get("experiment", {}).get("containerRecords", [])
+            self.patch_run(path, current, {
+                PAUSE_ANNOTATION: "false",
+                START_AFTER_INJECTIONS: str(injection_count(records)),
+            })
+            return {"success": True, "state": "pending", "runUID": current["metadata"]["uid"]}
+
+    def controls(self, case):
+        preset = self.preset(case)
+        with self.lock:
+            runs = self.current_runs(self.pods())
+            active = self.active_run(runs)
+            selected = runs.get(case, {"state": "idle", "runUID": None})
+            one_shot = is_one_shot(preset)
+            can_pause = selected["state"] == "running" and not one_shot
+            return {
+                "state": selected["state"],
+                "runUID": selected["runUID"],
+                "activeCase": active["case"] if active else None,
+                "activeTitle": self.preset(active["case"])["metadata"]["annotations"]["playground.chaos-mesh.org/title"] if active else None,
+                "canRun": active is None,
+                "canCancel": can_cancel(selected, one_shot),
+                "canPause": can_pause,
+                "canStop": can_pause,
+                "canStart": active is None and selected["state"] == "paused",
+            }
 
     def status(self, case="network-delay"):
         with self.lock:
@@ -244,8 +358,7 @@ class Runner:
         with self.lock:
             pods = self.pods()
             runs = dict(self.history)
-            for obj in self.current_experiments():
-                run = self.observe(obj, pods)
+            for run in self.current_runs(pods).values():
                 runs[run["runUID"]] = run
             return pods, [mark for run in runs.values() for mark in annotations(run)]
 
@@ -255,10 +368,15 @@ class Runner:
 
     def metrics(self):
         pods, marks = self.observations()
-        samples = {(mark["runUID"], mark["event"], mark["case"]): mark["time"] for mark in marks}
+        samples = {}
+        for mark in marks:
+            key = (mark["runUID"], mark["event"], mark["case"])
+            samples.setdefault(key, set()).add(mark["time"])
         lines = ["# TYPE playground_chaos_event_timestamp_milliseconds gauge"]
-        for (uid, event, case), timestamp in samples.items():
-            lines.append(f'playground_chaos_event_timestamp_milliseconds{{run_uid="{uid}",event="{event}",scenario="{case}"}} {timestamp}')
+        for (uid, event, case), timestamps in samples.items():
+            for index, timestamp in enumerate(sorted(timestamps), start=1):
+                occurrence = f',occurrence="{index}"' if index > 1 else ""
+                lines.append(f'playground_chaos_event_timestamp_milliseconds{{run_uid="{uid}",event="{event}",scenario="{case}"{occurrence}}} {timestamp}')
         ready_pods = [pod for pod in pods if ready_condition(pod)]
         for pod in pods:
             name = pod["metadata"]["name"]
@@ -304,6 +422,9 @@ class Handler(BaseHTTPRequestHandler):
                 if case is None:
                     case = "network-" + query.get("action", ["delay"])[0]
                 self.respond(200, self.runner.status(case))
+            elif request.path == "/controls":
+                case = urllib.parse.parse_qs(request.query).get("case", [""])[0]
+                self.respond(200, self.runner.controls(case))
             elif request.path == "/dashboard-current":
                 case = urllib.parse.parse_qs(request.query).get("case", [""])[0]
                 obj = self.runner.current(self.runner.object_path(case))
@@ -332,7 +453,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         try:
-            if self.path not in ("/run", "/stop"):
+            if self.path not in ("/run", "/cancel", "/pause", "/start", "/stop"):
                 raise APIError(404, "Unknown route")
             if self.headers.get("Origin") not in (None, self.allowed_origin):
                 raise APIError(403, "Origin not allowed")
@@ -342,13 +463,23 @@ class Handler(BaseHTTPRequestHandler):
             if not 0 < length <= 128:
                 raise APIError(400, "Expected a Playground preset ID")
             data = json.loads(self.rfile.read(length))
-            if not isinstance(data, dict) or data.keys() not in ({"case"}, {"action"}, set()):
+            if not isinstance(data, dict):
+                raise APIError(400, "Expected a Playground preset ID")
+            uid = data.pop("runUID", None)
+            if self.path in ("/cancel", "/pause", "/start") and (not isinstance(uid, str) or not uid):
+                raise APIError(400, "Expected the selected experiment UID")
+            if (uid is not None and not isinstance(uid, str)) or data.keys() not in ({"case"}, {"action"}, set()):
                 raise APIError(400, "Expected a Playground preset ID")
             key, value = next(iter(data.items()), ("action", "delay"))
             if not isinstance(value, str):
                 raise APIError(400, "Unknown Playground preset")
             case = value if key == "case" else "network-" + value
-            result = self.runner.start(case) if self.path == "/run" else self.runner.stop(case)
+            if self.path == "/run":
+                result = self.runner.start(case)
+            elif self.path == "/start":
+                result = self.runner.resume(case, uid)
+            else:
+                result = self.runner.stop(case, uid, resumable=self.path == "/pause", cancel=self.path == "/cancel")
             self.respond(202, result)
         except ValueError:
             self.respond(400, {"success": False, "error": "Expected a Playground preset ID"})

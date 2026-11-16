@@ -1,0 +1,31 @@
+{
+  "apiVersion": "chaos-mesh.org/v1alpha1",
+  "kind": "JVMChaos",
+  "metadata": {
+    "name": "jvm-rule-data",
+    "namespace": "playground-demo",
+    "labels": {
+      "app.kubernetes.io/managed-by": "playground-runner"
+    },
+    "annotations": {
+      "playground.chaos-mesh.org/title": "Conditional return · 7 to 42"
+    }
+  },
+  "spec": {
+    "mode": "one",
+    "duration": "30s",
+    "selector": {
+      "namespaces": [
+        "playground-demo"
+      ],
+      "labelSelectors": {
+        "app": "playground-jvm-probe"
+      }
+    },
+    "containerNames": [
+      "probe"
+    ],
+    "action": "ruleData",
+    "ruleData": "RULE playground conditional return\nCLASS playground.JvmProbe\nMETHOD ruleValue(int)\nAT ENTRY\nIF $1 == 7\nDO return 42\nENDRULE\n"
+  }
+}

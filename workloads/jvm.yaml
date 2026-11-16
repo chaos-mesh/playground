@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jvm-probe
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: playground-jvm-probe
+  template:
+    metadata:
+      labels:
+        app: playground-jvm-probe
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: probe
+          image: eclipse-temurin:17.0.21_9-jdk-jammy
+          command: ["sh", "-ec", "javac -d /tmp /app/JvmProbe.java && exec java -cp /tmp playground.JvmProbe"]
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+          volumeMounts:
+            - name: source
+              mountPath: /app
+              readOnly: true
+      volumes:
+        - name: source
+          configMap:
+            name: jvm-probe-source
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jvm-probe
+spec:
+  selector:
+    app: playground-jvm-probe
+  ports:
+    - port: 8080

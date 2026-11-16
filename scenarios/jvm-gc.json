@@ -1,0 +1,30 @@
+{
+  "apiVersion": "chaos-mesh.org/v1alpha1",
+  "kind": "JVMChaos",
+  "metadata": {
+    "name": "jvm-gc",
+    "namespace": "playground-demo",
+    "labels": {
+      "app.kubernetes.io/managed-by": "playground-runner"
+    },
+    "annotations": {
+      "playground.chaos-mesh.org/title": "Garbage collection · one request"
+    }
+  },
+  "spec": {
+    "mode": "one",
+    "duration": "30s",
+    "selector": {
+      "namespaces": [
+        "playground-demo"
+      ],
+      "labelSelectors": {
+        "app": "playground-jvm-probe"
+      }
+    },
+    "containerNames": [
+      "probe"
+    ],
+    "action": "gc"
+  }
+}

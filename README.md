@@ -1,6 +1,6 @@
 # Chaos Mesh Playground
 
-Choose a preset in Grafana for NetworkChaos, PodChaos, IOChaos, HTTPChaos, DNSChaos, or StressChaos. Run it against the demo workloads and watch the measured effect next to the experiment events.
+Choose a preset in Grafana for NetworkChaos, PodChaos, IOChaos, HTTPChaos, DNSChaos, StressChaos, TimeChaos, or JVMChaos. Run it against the demo workloads and watch the measured effect next to the experiment events.
 
 ## Run the demo
 
@@ -83,10 +83,25 @@ Choose **Chaos type**, then **Action**. The **Impact** chart switches to the mea
 | | random | DNS answers that differ from the Service IP |
 | StressChaos | CPU | CPU cores used by the target container |
 | | memory | Anonymous memory used by the target container |
+| TimeChaos | clock skew | Real-time clock offset from the Prometheus scrape time |
+| JVMChaos | return | Java method return value |
+| | latency | Java method execution time |
+| | exception | Java method failures |
+| | ruleData | Return values for matching and nonmatching inputs |
+| | gc | Recent JVM garbage collections and collection time |
+| | stress | CPU cores used by the JVM |
 
-Wait for a few baseline samples and click **Run experiment**. Timed cases last 30 seconds and can be stopped early. For Pod kill and container kill, wait for **Workload Ready** while Kubernetes restores the Deployment. The runner executes one case at a time.
+Wait for a few baseline samples and click **Run experiment**. You can run one case at a time. The button is disabled while an experiment is starting, running, or recovering. Click **Cancel** while the experiment is starting. Starting an experiment switches a historical time range to the last five minutes with live refresh.
+
+While a timed case is running, click **Pause** to recover the workload and keep the current experiment available to start again. Click **Start** to continue that experiment before its original 30-second deadline. Click **Stop** to end the current experiment early. For Pod kill and container kill, wait for **Workload Ready** while Kubernetes restores the Deployment.
 
 IOChaos is scoped to a test file on an `emptyDir`. UDP cases send traffic between two demo Pods. The sender attaches an application checksum so the probe can measure corruption in received UDP payloads.
+
+TimeChaos shifts the probe's real-time clock forward by 60 seconds. The offset returns to about zero after recovery.
+
+JVMChaos uses the existing Java 17 probe. The return preset changes `probeValue()` from 7 to 99 and restores it to 7. Latency adds 300 milliseconds to that method. The exception preset throws `IllegalStateException` from the method while the metrics endpoint stays available. The conditional `ruleData` preset changes `ruleValue(7)` to 42 and leaves `ruleValue(8)` at 8.
+
+The GC preset requests one garbage collection when the agent installs the rule. The chart estimates the collection count and total collection time over the last 10 seconds. The stress preset starts one CPU worker. Removing the rule stops the worker. The chart shows the CPU cores used by the Java process.
 
 Grafana filters event markers to the selected preset and identifies every run by UID. **Chaos Mesh recovered** marks the controller event. **Workload Ready** comes from the replacement Pod or restarted container observed through the Kubernetes API. Prometheus retains the samples for the life of its Pod. The runner keeps up to 100 prior runs in memory.
 

@@ -1,0 +1,33 @@
+{
+  "apiVersion": "chaos-mesh.org/v1alpha1",
+  "kind": "TimeChaos",
+  "metadata": {
+    "name": "time-skew",
+    "namespace": "playground-demo",
+    "labels": {
+      "app.kubernetes.io/managed-by": "playground-runner"
+    },
+    "annotations": {
+      "playground.chaos-mesh.org/title": "Clock skew · +60 s"
+    }
+  },
+  "spec": {
+    "mode": "one",
+    "duration": "30s",
+    "selector": {
+      "namespaces": [
+        "playground-demo"
+      ],
+      "labelSelectors": {
+        "app": "playground-time-probe"
+      }
+    },
+    "containerNames": [
+      "probe"
+    ],
+    "timeOffset": "+60s",
+    "clockIds": [
+      "CLOCK_REALTIME"
+    ]
+  }
+}
