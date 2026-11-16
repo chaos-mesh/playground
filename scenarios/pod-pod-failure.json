@@ -1,0 +1,27 @@
+{
+  "apiVersion": "chaos-mesh.org/v1alpha1",
+  "kind": "PodChaos",
+  "metadata": {
+    "name": "pod-pod-failure",
+    "namespace": "playground-demo",
+    "labels": {
+      "app.kubernetes.io/managed-by": "playground-runner"
+    },
+    "annotations": {
+      "playground.chaos-mesh.org/title": "Pod failure · 30 s"
+    }
+  },
+  "spec": {
+    "action": "pod-failure",
+    "mode": "all",
+    "selector": {
+      "namespaces": [
+        "playground-demo"
+      ],
+      "labelSelectors": {
+        "app": "playground-podinfo"
+      }
+    },
+    "duration": "30s"
+  }
+}

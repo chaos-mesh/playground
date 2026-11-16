@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stress-probe
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: playground-stress-probe
+  template:
+    metadata:
+      labels:
+        app: playground-stress-probe
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: probe
+          image: python:3.12.12-slim
+          command: ["python", "-u", "/app/stress_probe.py"]
+          resources:
+            limits:
+              cpu: "1"
+              memory: 128Mi
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: 8080
+          volumeMounts:
+            - name: source
+              mountPath: /app
+              readOnly: true
+      volumes:
+        - name: source
+          configMap:
+            name: stress-probe-source
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: stress-probe
+spec:
+  selector:
+    app: playground-stress-probe
+  ports:
+    - port: 8080

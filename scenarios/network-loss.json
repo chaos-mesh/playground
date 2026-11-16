@@ -1,0 +1,43 @@
+{
+  "apiVersion": "chaos-mesh.org/v1alpha1",
+  "kind": "NetworkChaos",
+  "metadata": {
+    "name": "network-loss",
+    "namespace": "playground-demo",
+    "labels": {
+      "app.kubernetes.io/managed-by": "playground-runner"
+    },
+    "annotations": {
+      "playground.chaos-mesh.org/title": "Loss · 30%"
+    }
+  },
+  "spec": {
+    "action": "loss",
+    "mode": "all",
+    "selector": {
+      "namespaces": [
+        "playground-demo"
+      ],
+      "labelSelectors": {
+        "app": "playground-network-source"
+      }
+    },
+    "direction": "to",
+    "target": {
+      "mode": "all",
+      "selector": {
+        "namespaces": [
+          "playground-demo"
+        ],
+        "labelSelectors": {
+          "app": "playground-network-probe"
+        }
+      }
+    },
+    "loss": {
+      "loss": "30",
+      "correlation": "0"
+    },
+    "duration": "30s"
+  }
+}

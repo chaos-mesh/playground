@@ -1,0 +1,104 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: playground-runner
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: playground-runner
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["list"]
+  - apiGroups: ["chaos-mesh.org"]
+    resources: ["networkchaos", "podchaos", "iochaos", "stresschaos", "dnschaos", "httpchaos"]
+    verbs: ["create", "list", "update"]
+  - apiGroups: ["chaos-mesh.org"]
+    resources: ["networkchaos"]
+    resourceNames: ["network-bandwidth", "network-corrupt", "network-delay", "network-duplicate", "network-loss", "network-netem", "network-partition"]
+    verbs: ["get", "patch", "delete"]
+  - apiGroups: ["chaos-mesh.org"]
+    resources: ["podchaos"]
+    resourceNames: ["pod-container-kill", "pod-pod-failure", "pod-pod-kill"]
+    verbs: ["get", "patch", "delete"]
+  - apiGroups: ["chaos-mesh.org"]
+    resources: ["iochaos"]
+    resourceNames: ["io-attroverride", "io-fault", "io-latency", "io-mistake"]
+    verbs: ["get", "patch", "delete"]
+  - apiGroups: ["chaos-mesh.org"]
+    resources: ["httpchaos"]
+    resourceNames: ["http-abort", "http-delay", "http-replace", "http-patch"]
+    verbs: ["get", "patch", "delete"]
+  - apiGroups: ["chaos-mesh.org"]
+    resources: ["dnschaos"]
+    resourceNames: ["dns-error", "dns-random"]
+    verbs: ["get", "patch", "delete"]
+  - apiGroups: ["chaos-mesh.org"]
+    resources: ["stresschaos"]
+    resourceNames: ["stress-cpu", "stress-memory"]
+    verbs: ["get", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: playground-runner
+subjects:
+  - kind: ServiceAccount
+    name: playground-runner
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: playground-runner
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: runner
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: playground-runner
+  template:
+    metadata:
+      labels:
+        app: playground-runner
+    spec:
+      serviceAccountName: playground-runner
+      containers:
+        - name: runner
+          image: python:3.12.12-slim
+          command: ["python", "-u", "/app/server.py"]
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+          volumeMounts:
+            - name: source
+              mountPath: /app
+              readOnly: true
+            - name: scenario
+              mountPath: /scenarios
+              readOnly: true
+      volumes:
+        - name: source
+          configMap:
+            name: runner-source
+        - name: scenario
+          configMap:
+            name: runner-scenario
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: runner
+spec:
+  selector:
+    app: playground-runner
+  ports:
+    - port: 8080

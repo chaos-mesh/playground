@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: http-probe
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: playground-http-probe
+  template:
+    metadata:
+      labels:
+        app: playground-http-probe
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: probe
+          image: python:3.12.12-slim
+          command: ["python", "-u", "/app/http_probe.py"]
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: 8080
+          volumeMounts:
+            - name: source
+              mountPath: /app
+              readOnly: true
+      volumes:
+        - name: source
+          configMap:
+            name: http-probe-source
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: http-probe
+spec:
+  selector:
+    app: playground-http-probe
+  ports:
+    - port: 8080

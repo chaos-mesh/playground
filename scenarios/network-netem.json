@@ -1,0 +1,45 @@
+{
+  "apiVersion": "chaos-mesh.org/v1alpha1",
+  "kind": "NetworkChaos",
+  "metadata": {
+    "name": "network-netem",
+    "namespace": "playground-demo",
+    "labels": {
+      "app.kubernetes.io/managed-by": "playground-runner"
+    },
+    "annotations": {
+      "playground.chaos-mesh.org/title": "Netem · 150 ms + 20% loss"
+    }
+  },
+  "spec": {
+    "action": "netem",
+    "mode": "all",
+    "selector": {
+      "namespaces": [
+        "playground-demo"
+      ],
+      "labelSelectors": {
+        "app": "playground-network-source"
+      }
+    },
+    "direction": "to",
+    "target": {
+      "mode": "all",
+      "selector": {
+        "namespaces": [
+          "playground-demo"
+        ],
+        "labelSelectors": {
+          "app": "playground-network-probe"
+        }
+      }
+    },
+    "duration": "30s",
+    "delay": {
+      "latency": "150ms"
+    },
+    "loss": {
+      "loss": "20"
+    }
+  }
+}

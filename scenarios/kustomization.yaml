@@ -1,0 +1,27 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+configMapGenerator:
+  - name: runner-scenario
+    files:
+      - io-attroverride.json
+      - io-fault.json
+      - io-latency.json
+      - io-mistake.json
+      - network-bandwidth.json
+      - network-corrupt.json
+      - network-delay.json
+      - network-duplicate.json
+      - network-loss.json
+      - network-netem.json
+      - network-partition.json
+      - pod-container-kill.json
+      - pod-pod-failure.json
+      - pod-pod-kill.json
+      - http-abort.json
+      - http-delay.json
+      - http-replace.json
+      - http-patch.json
+      - dns-error.json
+      - dns-random.json
+      - stress-cpu.json
+      - stress-memory.json

@@ -1,0 +1,7 @@
+apiVersion: 1
+providers:
+  - name: Playground
+    type: file
+    disableDeletion: false
+    options:
+      path: /var/lib/playground/dashboards

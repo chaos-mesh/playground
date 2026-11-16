@@ -1,0 +1,96 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: playground-chaos-dashboard
+  namespace: playground-demo
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: playground-chaos-dashboard
+  namespace: playground-demo
+rules:
+  - apiGroups: [""]
+    resources: [pods, events]
+    verbs: [get, list, watch]
+  - apiGroups: [chaos-mesh.org]
+    resources: ["*"]
+    verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: playground-chaos-dashboard
+  namespace: playground-demo
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: playground-chaos-dashboard
+subjects:
+  - kind: ServiceAccount
+    name: playground-chaos-dashboard
+    namespace: playground-demo
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: playground-chaos-dashboard
+  namespace: playground-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: playground-chaos-dashboard
+  template:
+    metadata:
+      labels:
+        app: playground-chaos-dashboard
+    spec:
+      serviceAccountName: playground-chaos-dashboard
+      containers:
+        - name: chaos-dashboard
+          image: ghcr.io/chaos-mesh/chaos-dashboard:v2.8.8
+          command:
+            - /usr/local/bin/chaos-dashboard
+          env:
+            - name: SECURITY_MODE
+              value: "false"
+            - name: CLUSTER_SCOPED
+              value: "false"
+            - name: TARGET_NAMESPACE
+              value: playground-demo
+            - name: ROOT_URL
+              value: http://127.0.0.1:3300/chaos-dashboard/
+            - name: ENABLE_PROFILING
+              value: "false"
+            - name: DATABASE_DRIVER
+              value: sqlite3
+            - name: DATABASE_DATASOURCE
+              value: /data/core.sqlite
+          ports:
+            - name: http
+              containerPort: 2333
+          readinessProbe:
+            httpGet:
+              path: /api/common/config
+              port: http
+          volumeMounts:
+            - name: database
+              mountPath: /data
+      volumes:
+        - name: database
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: playground-chaos-dashboard
+  namespace: playground-demo
+spec:
+  type: ClusterIP
+  selector:
+    app: playground-chaos-dashboard
+  ports:
+    - name: http
+      port: 2333
+      targetPort: http

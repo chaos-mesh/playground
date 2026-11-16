@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: io-probe
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: playground-io-probe
+  template:
+    metadata:
+      labels:
+        app: playground-io-probe
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: io
+          image: python:3.12.12-slim
+          command: ["python", "-u", "/app/io_probe.py"]
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: 8080
+          volumeMounts:
+            - name: source
+              mountPath: /app
+              readOnly: true
+            - name: demo-data
+              mountPath: /demo-data
+      volumes:
+        - name: source
+          configMap:
+            name: io-probe-source
+        - name: demo-data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: io-probe
+spec:
+  selector:
+    app: playground-io-probe
+  ports:
+    - port: 8080

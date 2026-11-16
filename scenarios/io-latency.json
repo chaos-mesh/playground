@@ -1,0 +1,37 @@
+{
+  "apiVersion": "chaos-mesh.org/v1alpha1",
+  "kind": "IOChaos",
+  "metadata": {
+    "name": "io-latency",
+    "namespace": "playground-demo",
+    "labels": {
+      "app.kubernetes.io/managed-by": "playground-runner"
+    },
+    "annotations": {
+      "playground.chaos-mesh.org/title": "Latency · 200 ms"
+    }
+  },
+  "spec": {
+    "action": "latency",
+    "mode": "all",
+    "selector": {
+      "namespaces": [
+        "playground-demo"
+      ],
+      "labelSelectors": {
+        "app": "playground-io-probe"
+      }
+    },
+    "duration": "30s",
+    "containerNames": [
+      "io"
+    ],
+    "volumePath": "/demo-data",
+    "path": "/demo-data/sample.bin",
+    "percent": 100,
+    "methods": [
+      "read"
+    ],
+    "delay": "200ms"
+  }
+}

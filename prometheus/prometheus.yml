@@ -1,0 +1,29 @@
+global:
+  scrape_interval: 2s
+  scrape_timeout: 1500ms
+scrape_configs:
+  - job_name: podinfo
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+      target: [http://podinfo:9898/api/info]
+    static_configs:
+      - targets: [blackbox:9115]
+  - job_name: playground-runner
+    static_configs:
+      - targets: [runner:8080]
+  - job_name: network-probe
+    static_configs:
+      - targets: [network-probe:8080]
+  - job_name: io-probe
+    static_configs:
+      - targets: [io-probe:8080]
+  - job_name: http-probe
+    static_configs:
+      - targets: [http-probe:8080]
+  - job_name: dns-probe
+    static_configs:
+      - targets: [dns-probe:8080]
+  - job_name: stress-probe
+    static_configs:
+      - targets: [stress-probe:8080]

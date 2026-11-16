@@ -1,0 +1,35 @@
+{
+  "apiVersion": "chaos-mesh.org/v1alpha1",
+  "kind": "StressChaos",
+  "metadata": {
+    "name": "stress-memory",
+    "namespace": "playground-demo",
+    "labels": {
+      "app.kubernetes.io/managed-by": "playground-runner"
+    },
+    "annotations": {
+      "playground.chaos-mesh.org/title": "Memory stress · 64 MiB"
+    }
+  },
+  "spec": {
+    "mode": "all",
+    "duration": "30s",
+    "selector": {
+      "namespaces": [
+        "playground-demo"
+      ],
+      "labelSelectors": {
+        "app": "playground-stress-probe"
+      }
+    },
+    "containerNames": [
+      "probe"
+    ],
+    "stressors": {
+      "memory": {
+        "workers": 1,
+        "size": "64MiB"
+      }
+    }
+  }
+}

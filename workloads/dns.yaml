@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dns-probe
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: playground-dns-probe
+  template:
+    metadata:
+      labels:
+        app: playground-dns-probe
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: probe
+          image: python:3.12.12-slim
+          command: ["python", "-u", "/app/dns_probe.py"]
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: 8080
+          volumeMounts:
+            - name: source
+              mountPath: /app
+              readOnly: true
+      volumes:
+        - name: source
+          configMap:
+            name: dns-probe-source
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dns-probe
+spec:
+  selector:
+    app: playground-dns-probe
+  ports:
+    - port: 8080

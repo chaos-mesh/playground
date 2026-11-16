@@ -1,0 +1,30 @@
+{
+  "apiVersion": "chaos-mesh.org/v1alpha1",
+  "kind": "DNSChaos",
+  "metadata": {
+    "name": "dns-error",
+    "namespace": "playground-demo",
+    "labels": {
+      "app.kubernetes.io/managed-by": "playground-runner"
+    },
+    "annotations": {
+      "playground.chaos-mesh.org/title": "DNS error"
+    }
+  },
+  "spec": {
+    "mode": "all",
+    "duration": "30s",
+    "selector": {
+      "namespaces": [
+        "playground-demo"
+      ],
+      "labelSelectors": {
+        "app": "playground-dns-probe"
+      }
+    },
+    "patterns": [
+      "podinfo.playground-demo.svc.cluster.local"
+    ],
+    "action": "error"
+  }
+}

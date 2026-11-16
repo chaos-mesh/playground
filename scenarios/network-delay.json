@@ -1,0 +1,42 @@
+{
+  "apiVersion": "chaos-mesh.org/v1alpha1",
+  "kind": "NetworkChaos",
+  "metadata": {
+    "name": "network-delay",
+    "namespace": "playground-demo",
+    "labels": {
+      "app.kubernetes.io/managed-by": "playground-runner"
+    },
+    "annotations": {
+      "playground.chaos-mesh.org/title": "Delay · 200 ms"
+    }
+  },
+  "spec": {
+    "action": "delay",
+    "mode": "all",
+    "selector": {
+      "namespaces": [
+        "playground-demo"
+      ],
+      "labelSelectors": {
+        "app": "playground-podinfo"
+      }
+    },
+    "direction": "to",
+    "target": {
+      "mode": "all",
+      "selector": {
+        "namespaces": [
+          "playground-demo"
+        ],
+        "labelSelectors": {
+          "app": "playground-blackbox"
+        }
+      }
+    },
+    "delay": {
+      "latency": "200ms"
+    },
+    "duration": "30s"
+  }
+}

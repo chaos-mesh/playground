@@ -1,0 +1,44 @@
+{
+  "apiVersion": "chaos-mesh.org/v1alpha1",
+  "kind": "NetworkChaos",
+  "metadata": {
+    "name": "network-bandwidth",
+    "namespace": "playground-demo",
+    "labels": {
+      "app.kubernetes.io/managed-by": "playground-runner"
+    },
+    "annotations": {
+      "playground.chaos-mesh.org/title": "Bandwidth · 1 Mbit/s"
+    }
+  },
+  "spec": {
+    "action": "bandwidth",
+    "mode": "all",
+    "selector": {
+      "namespaces": [
+        "playground-demo"
+      ],
+      "labelSelectors": {
+        "app": "playground-network-source"
+      }
+    },
+    "direction": "to",
+    "target": {
+      "mode": "all",
+      "selector": {
+        "namespaces": [
+          "playground-demo"
+        ],
+        "labelSelectors": {
+          "app": "playground-network-probe"
+        }
+      }
+    },
+    "bandwidth": {
+      "rate": "1mbit",
+      "limit": 20000,
+      "buffer": 10000
+    },
+    "duration": "30s"
+  }
+}

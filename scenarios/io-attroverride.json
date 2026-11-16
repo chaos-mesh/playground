@@ -1,0 +1,39 @@
+{
+  "apiVersion": "chaos-mesh.org/v1alpha1",
+  "kind": "IOChaos",
+  "metadata": {
+    "name": "io-attroverride",
+    "namespace": "playground-demo",
+    "labels": {
+      "app.kubernetes.io/managed-by": "playground-runner"
+    },
+    "annotations": {
+      "playground.chaos-mesh.org/title": "Attribute override · 0600"
+    }
+  },
+  "spec": {
+    "action": "attrOverride",
+    "mode": "all",
+    "selector": {
+      "namespaces": [
+        "playground-demo"
+      ],
+      "labelSelectors": {
+        "app": "playground-io-probe"
+      }
+    },
+    "duration": "30s",
+    "containerNames": [
+      "io"
+    ],
+    "volumePath": "/demo-data",
+    "path": "/demo-data/sample.bin",
+    "percent": 100,
+    "methods": [
+      "getattr"
+    ],
+    "attr": {
+      "perm": 384
+    }
+  }
+}

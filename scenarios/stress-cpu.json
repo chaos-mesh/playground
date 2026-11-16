@@ -1,0 +1,35 @@
+{
+  "apiVersion": "chaos-mesh.org/v1alpha1",
+  "kind": "StressChaos",
+  "metadata": {
+    "name": "stress-cpu",
+    "namespace": "playground-demo",
+    "labels": {
+      "app.kubernetes.io/managed-by": "playground-runner"
+    },
+    "annotations": {
+      "playground.chaos-mesh.org/title": "CPU stress · one worker"
+    }
+  },
+  "spec": {
+    "mode": "all",
+    "duration": "30s",
+    "selector": {
+      "namespaces": [
+        "playground-demo"
+      ],
+      "labelSelectors": {
+        "app": "playground-stress-probe"
+      }
+    },
+    "containerNames": [
+      "probe"
+    ],
+    "stressors": {
+      "cpu": {
+        "workers": 1,
+        "load": 100
+      }
+    }
+  }
+}

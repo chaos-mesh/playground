@@ -1,0 +1,42 @@
+{
+  "apiVersion": "chaos-mesh.org/v1alpha1",
+  "kind": "NetworkChaos",
+  "metadata": {
+    "name": "network-corrupt",
+    "namespace": "playground-demo",
+    "labels": {
+      "app.kubernetes.io/managed-by": "playground-runner"
+    },
+    "annotations": {
+      "playground.chaos-mesh.org/title": "Corrupt · 30%"
+    }
+  },
+  "spec": {
+    "action": "corrupt",
+    "mode": "all",
+    "selector": {
+      "namespaces": [
+        "playground-demo"
+      ],
+      "labelSelectors": {
+        "app": "playground-network-source"
+      }
+    },
+    "direction": "to",
+    "target": {
+      "mode": "all",
+      "selector": {
+        "namespaces": [
+          "playground-demo"
+        ],
+        "labelSelectors": {
+          "app": "playground-network-probe"
+        }
+      }
+    },
+    "duration": "30s",
+    "corrupt": {
+      "corrupt": "30"
+    }
+  }
+}

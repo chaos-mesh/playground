@@ -1,0 +1,29 @@
+{
+  "apiVersion": "chaos-mesh.org/v1alpha1",
+  "kind": "PodChaos",
+  "metadata": {
+    "name": "pod-container-kill",
+    "namespace": "playground-demo",
+    "labels": {
+      "app.kubernetes.io/managed-by": "playground-runner"
+    },
+    "annotations": {
+      "playground.chaos-mesh.org/title": "Container kill · once"
+    }
+  },
+  "spec": {
+    "action": "container-kill",
+    "mode": "all",
+    "selector": {
+      "namespaces": [
+        "playground-demo"
+      ],
+      "labelSelectors": {
+        "app": "playground-podinfo"
+      }
+    },
+    "containerNames": [
+      "podinfo"
+    ]
+  }
+}

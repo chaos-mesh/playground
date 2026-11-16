@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: network-source
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: playground-network-source
+  template:
+    metadata:
+      labels:
+        app: playground-network-source
+    spec:
+      containers:
+        - name: source
+          image: python:3.12.12-slim
+          command: ["python", "-u", "/app/network_probe.py", "send"]
+          volumeMounts:
+            - name: source
+              mountPath: /app
+              readOnly: true
+      volumes:
+        - name: source
+          configMap:
+            name: network-probe-source
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: network-probe
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: playground-network-probe
+  template:
+    metadata:
+      labels:
+        app: playground-network-probe
+    spec:
+      containers:
+        - name: probe
+          image: python:3.12.12-slim
+          command: ["python", "-u", "/app/network_probe.py", "receive"]
+          ports:
+            - name: udp
+              containerPort: 9000
+              protocol: UDP
+            - name: metrics
+              containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: metrics
+          volumeMounts:
+            - name: source
+              mountPath: /app
+              readOnly: true
+      volumes:
+        - name: source
+          configMap:
+            name: network-probe-source
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: network-probe
+spec:
+  clusterIP: None
+  selector:
+    app: playground-network-probe
+  ports:
+    - name: udp
+      port: 9000
+      protocol: UDP
+    - name: metrics
+      port: 8080

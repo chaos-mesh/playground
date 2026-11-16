@@ -1,0 +1,84 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: playground-grafana
+  template:
+    metadata:
+      labels:
+        app: playground-grafana
+    spec:
+      containers:
+        - name: grafana
+          image: grafana/grafana:13.0.3
+          env:
+            - name: GF_SERVER_ROOT_URL
+              value: http://127.0.0.1:3300/
+            - name: GF_PANELS_DISABLE_SANITIZE_HTML
+              value: "true"
+            - name: GF_SERVER_HTTP_ADDR
+              value: 127.0.0.1
+            - name: GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH
+              value: /var/lib/playground/dashboards/playground.json
+            - name: GF_DASHBOARDS_MIN_REFRESH_INTERVAL
+              value: 2s
+            - name: GF_USERS_ALLOW_SIGN_UP
+              value: "false"
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: grafana-admin
+                  key: password
+          volumeMounts:
+            - name: dashboard
+              mountPath: /var/lib/playground/dashboards
+              readOnly: true
+            - name: provisioning
+              mountPath: /etc/grafana/provisioning/dashboards
+              subPath: dashboards
+              readOnly: true
+            - name: provisioning
+              mountPath: /etc/grafana/provisioning/datasources
+              subPath: datasources
+              readOnly: true
+        - name: gateway
+          image: nginx:1.28.0-alpine
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 8080
+          volumeMounts:
+            - name: gateway
+              mountPath: /etc/nginx/conf.d
+              readOnly: true
+      volumes:
+        - name: dashboard
+          configMap:
+            name: grafana-dashboard
+        - name: provisioning
+          configMap:
+            name: grafana-provisioning
+            items:
+              - key: dashboards.yml
+                path: dashboards/playground.yml
+              - key: datasources.yml
+                path: datasources/playground.yml
+        - name: gateway
+          configMap:
+            name: grafana-gateway
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+spec:
+  selector:
+    app: playground-grafana
+  ports:
+    - port: 8080

@@ -1,0 +1,32 @@
+{
+  "apiVersion": "chaos-mesh.org/v1alpha1",
+  "kind": "HTTPChaos",
+  "metadata": {
+    "name": "http-replace",
+    "namespace": "playground-demo",
+    "labels": {
+      "app.kubernetes.io/managed-by": "playground-runner"
+    },
+    "annotations": {
+      "playground.chaos-mesh.org/title": "Replace response body"
+    }
+  },
+  "spec": {
+    "mode": "all",
+    "duration": "30s",
+    "selector": {
+      "namespaces": [
+        "playground-demo"
+      ],
+      "labelSelectors": {
+        "app": "playground-podinfo"
+      }
+    },
+    "port": 9898,
+    "path": "/api/info",
+    "target": "Response",
+    "replace": {
+      "body": "eyJtZXNzYWdlIjoiUmVwbGFjZWQgYnkgSFRUUENoYW9zIn0="
+    }
+  }
+}

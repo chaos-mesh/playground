@@ -1,0 +1,48 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: playground-demo
+resources:
+  - deploy/namespace.yaml
+  - deploy/chaos-dashboard.yaml
+  - workloads/demo.yaml
+  - workloads/network.yaml
+  - workloads/io.yaml
+  - workloads/http.yaml
+  - workloads/dns.yaml
+  - workloads/stress.yaml
+  - scenarios
+  - prometheus/deployment.yaml
+  - runner/deployment.yaml
+  - grafana/deployment.yaml
+configMapGenerator:
+  - name: network-probe-source
+    files:
+      - workloads/network_probe.py
+  - name: stress-probe-source
+    files:
+      - workloads/stress_probe.py
+  - name: dns-probe-source
+    files:
+      - workloads/dns_probe.py
+  - name: http-probe-source
+    files:
+      - workloads/http_probe.py
+  - name: io-probe-source
+    files:
+      - workloads/io_probe.py
+  - name: runner-source
+    files:
+      - runner/server.py
+  - name: prometheus-config
+    files:
+      - prometheus/prometheus.yml
+  - name: grafana-dashboard
+    files:
+      - grafana/playground.json
+  - name: grafana-provisioning
+    files:
+      - grafana/dashboards.yml
+      - grafana/datasources.yml
+  - name: grafana-gateway
+    files:
+      - grafana/nginx.conf

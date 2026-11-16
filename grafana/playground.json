@@ -1,0 +1,1567 @@
+{
+  "apiVersion": "dashboard.grafana.app/v2",
+  "kind": "Dashboard",
+  "spec": {
+    "annotations": [
+      {
+        "kind": "AnnotationQuery",
+        "spec": {
+          "query": {
+            "kind": "DataQuery",
+            "group": "grafana",
+            "version": "v0",
+            "datasource": {
+              "name": "-- Grafana --"
+            },
+            "spec": {}
+          },
+          "enable": true,
+          "hide": true,
+          "iconColor": "rgba(0, 211, 255, 1)",
+          "name": "Annotations & Alerts",
+          "builtIn": true,
+          "legacyOptions": {
+            "type": "dashboard"
+          }
+        }
+      },
+      {
+        "kind": "AnnotationQuery",
+        "spec": {
+          "query": {
+            "kind": "DataQuery",
+            "group": "prometheus",
+            "version": "v0",
+            "datasource": {
+              "name": "playground-prometheus"
+            },
+            "spec": {
+              "expr": "playground_chaos_event_timestamp_milliseconds{event=\"injected\",scenario=\"${case}\"}",
+              "instant": false,
+              "interval": "2s",
+              "range": true,
+              "refId": "Anno"
+            }
+          },
+          "enable": true,
+          "hide": true,
+          "iconColor": "#f79009",
+          "name": "Chaos Mesh applied",
+          "legacyOptions": {
+            "tagKeys": "run_uid",
+            "textFormat": "{{scenario}} · run {{run_uid}}",
+            "titleFormat": "Chaos Mesh applied",
+            "useValueForTime": true
+          }
+        }
+      },
+      {
+        "kind": "AnnotationQuery",
+        "spec": {
+          "query": {
+            "kind": "DataQuery",
+            "group": "prometheus",
+            "version": "v0",
+            "datasource": {
+              "name": "playground-prometheus"
+            },
+            "spec": {
+              "expr": "playground_chaos_event_timestamp_milliseconds{event=\"recovered\",scenario=\"${case}\"}",
+              "instant": false,
+              "interval": "2s",
+              "range": true,
+              "refId": "Anno"
+            }
+          },
+          "enable": true,
+          "hide": true,
+          "iconColor": "#32d583",
+          "name": "Chaos Mesh recovered",
+          "legacyOptions": {
+            "tagKeys": "run_uid",
+            "textFormat": "{{scenario}} · run {{run_uid}}",
+            "titleFormat": "Chaos Mesh recovered",
+            "useValueForTime": true
+          }
+        }
+      },
+      {
+        "kind": "AnnotationQuery",
+        "spec": {
+          "query": {
+            "kind": "DataQuery",
+            "group": "prometheus",
+            "version": "v0",
+            "datasource": {
+              "name": "playground-prometheus"
+            },
+            "spec": {
+              "expr": "playground_chaos_event_timestamp_milliseconds{event=\"workload-ready\",scenario=\"${case}\"}",
+              "instant": false,
+              "interval": "2s",
+              "range": true,
+              "refId": "Anno"
+            }
+          },
+          "enable": true,
+          "hide": true,
+          "iconColor": "#32d583",
+          "name": "Workload Ready",
+          "legacyOptions": {
+            "tagKeys": "run_uid",
+            "textFormat": "{{scenario}} · run {{run_uid}}",
+            "titleFormat": "Workload Ready",
+            "useValueForTime": true
+          }
+        }
+      }
+    ],
+    "cursorSync": "Off",
+    "editable": false,
+    "elements": {
+      "panel-1": {
+        "kind": "Panel",
+        "spec": {
+          "id": 1,
+          "title": "${kind} · ${case:text}",
+          "description": "Run the selected preset. Stop ends timed experiments early. Kubernetes restores the workload after one-shot actions.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "canvas",
+            "version": "",
+            "spec": {
+              "options": {
+                "inlineEditing": false,
+                "root": {
+                  "elements": [
+                    {
+                      "config": {
+                        "align": "center",
+                        "api": {
+                          "contentType": "application/json",
+                          "data": "{\"case\":\"${case}\"}",
+                          "endpoint": "/playground-api/run",
+                          "method": "POST",
+                          "successMessage": "Experiment submitted"
+                        },
+                        "size": 14,
+                        "style": {
+                          "variant": "primary"
+                        },
+                        "text": {
+                          "fixed": "Run experiment",
+                          "mode": "fixed"
+                        }
+                      },
+                      "name": "Run experiment",
+                      "placement": {
+                        "height": 36,
+                        "left": 12,
+                        "top": 12,
+                        "width": 144
+                      },
+                      "type": "button"
+                    },
+                    {
+                      "config": {
+                        "align": "center",
+                        "api": {
+                          "contentType": "application/json",
+                          "data": "{\"case\":\"${case}\"}",
+                          "endpoint": "/playground-api/stop",
+                          "method": "POST",
+                          "successMessage": "Recovery requested"
+                        },
+                        "size": 14,
+                        "style": {
+                          "variant": "secondary"
+                        },
+                        "text": {
+                          "fixed": "Stop",
+                          "mode": "fixed"
+                        }
+                      },
+                      "name": "Stop",
+                      "placement": {
+                        "height": 36,
+                        "left": 166,
+                        "top": 12,
+                        "width": 74
+                      },
+                      "type": "button"
+                    }
+                  ],
+                  "name": "Experiment controls",
+                  "type": "frame"
+                },
+                "showAdvancedTypes": true
+              },
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-2": {
+        "kind": "Panel",
+        "spec": {
+          "id": 2,
+          "title": "Impact · ${case:text}",
+          "description": "Measurements from the demo workload and its probes.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "playground-prometheus"
+                      },
+                      "spec": {
+                        "expr": "(1000 * probe_duration_seconds{job=\"podinfo\"}) and on () playground_scenario{scenario=\"${case}\",scenario=~\"network-delay\"}",
+                        "legendFormat": "HTTP request latency",
+                        "range": true
+                      }
+                    },
+                    "refId": "metric_A",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "playground-prometheus"
+                      },
+                      "spec": {
+                        "expr": "(playground_network_packet_loss_percent) and on () playground_scenario{scenario=\"${case}\",scenario=~\"network-loss|network-netem\"}",
+                        "legendFormat": "UDP packet loss",
+                        "range": true
+                      }
+                    },
+                    "refId": "metric_B",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "playground-prometheus"
+                      },
+                      "spec": {
+                        "expr": "(playground_network_receive_bits_per_second) and on () playground_scenario{scenario=\"${case}\",scenario=~\"network-bandwidth\"}",
+                        "legendFormat": "UDP receive throughput",
+                        "range": true
+                      }
+                    },
+                    "refId": "metric_C",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "playground-prometheus"
+                      },
+                      "spec": {
+                        "expr": "(playground_network_duplicate_percent) and on () playground_scenario{scenario=\"${case}\",scenario=~\"network-duplicate\"}",
+                        "legendFormat": "Duplicate UDP packets",
+                        "range": true
+                      }
+                    },
+                    "refId": "metric_D",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "playground-prometheus"
+                      },
+                      "spec": {
+                        "expr": "(playground_network_corrupt_percent) and on () playground_scenario{scenario=\"${case}\",scenario=~\"network-corrupt\"}",
+                        "legendFormat": "UDP payload checksum errors",
+                        "range": true
+                      }
+                    },
+                    "refId": "metric_E",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "playground-prometheus"
+                      },
+                      "spec": {
+                        "expr": "(playground_network_udp_reachable) and on () playground_scenario{scenario=\"${case}\",scenario=~\"network-partition\"}",
+                        "legendFormat": "UDP reachable",
+                        "range": true
+                      }
+                    },
+                    "refId": "metric_F",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "playground-prometheus"
+                      },
+                      "spec": {
+                        "expr": "(playground_network_one_way_milliseconds) and on () playground_scenario{scenario=\"${case}\",scenario=~\"network-netem\"}",
+                        "legendFormat": "UDP one-way delay",
+                        "range": true
+                      }
+                    },
+                    "refId": "metric_G",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "playground-prometheus"
+                      },
+                      "spec": {
+                        "expr": "(probe_success{job=\"podinfo\"}) and on () playground_scenario{scenario=\"${case}\",scenario=~\"pod-pod-failure\"}",
+                        "legendFormat": "HTTP probe success",
+                        "range": true
+                      }
+                    },
+                    "refId": "metric_H",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "playground-prometheus"
+                      },
+                      "spec": {
+                        "expr": "(playground_pod_ready) and on () playground_scenario{scenario=\"${case}\",scenario=~\"pod-pod-kill\"}",
+                        "legendFormat": "{{pod}}",
+                        "range": true
+                      }
+                    },
+                    "refId": "metric_I",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "playground-prometheus"
+                      },
+                      "spec": {
+                        "expr": "(playground_pod_container_restarts) and on () playground_scenario{scenario=\"${case}\",scenario=~\"pod-container-kill\"}",
+                        "legendFormat": "Container restarts",
+                        "range": true
+                      }
+                    },
+                    "refId": "metric_J",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "playground-prometheus"
+                      },
+                      "spec": {
+                        "expr": "(playground_io_read_milliseconds) and on () playground_scenario{scenario=\"${case}\",scenario=~\"io-latency\"}",
+                        "legendFormat": "File read latency",
+                        "range": true
+                      }
+                    },
+                    "refId": "metric_K",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "playground-prometheus"
+                      },
+                      "spec": {
+                        "expr": "(100 * avg_over_time(playground_io_read_error[6s])) and on () playground_scenario{scenario=\"${case}\",scenario=~\"io-fault\"}",
+                        "legendFormat": "Read errors",
+                        "range": true
+                      }
+                    },
+                    "refId": "metric_L",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "playground-prometheus"
+                      },
+                      "spec": {
+                        "expr": "(playground_io_mode_octal) and on () playground_scenario{scenario=\"${case}\",scenario=~\"io-attroverride\"}",
+                        "legendFormat": "File permissions (octal)",
+                        "range": true
+                      }
+                    },
+                    "refId": "metric_M",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "playground-prometheus"
+                      },
+                      "spec": {
+                        "expr": "(100 * avg_over_time(playground_io_content_mismatch[6s])) and on () playground_scenario{scenario=\"${case}\",scenario=~\"io-mistake\"}",
+                        "legendFormat": "Read content mismatch",
+                        "range": true
+                      }
+                    },
+                    "refId": "metric_N",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "playground-prometheus"
+                      },
+                      "spec": {
+                        "expr": "(100 * playground_http_failed) and on () playground_scenario{scenario=\"${case}\",scenario=~\"http-abort\"}",
+                        "legendFormat": "HTTP failures",
+                        "range": true
+                      }
+                    },
+                    "refId": "metric_14",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "playground-prometheus"
+                      },
+                      "spec": {
+                        "expr": "(playground_http_latency_milliseconds) and on () playground_scenario{scenario=\"${case}\",scenario=~\"http-delay\"}",
+                        "legendFormat": "HTTP response time",
+                        "range": true
+                      }
+                    },
+                    "refId": "metric_15",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "playground-prometheus"
+                      },
+                      "spec": {
+                        "expr": "(100 * playground_http_replaced) and on () playground_scenario{scenario=\"${case}\",scenario=~\"http-replace\"}",
+                        "legendFormat": "Replaced response body",
+                        "range": true
+                      }
+                    },
+                    "refId": "metric_16",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "playground-prometheus"
+                      },
+                      "spec": {
+                        "expr": "(100 * playground_http_patched) and on () playground_scenario{scenario=\"${case}\",scenario=~\"http-patch\"}",
+                        "legendFormat": "Patched response header",
+                        "range": true
+                      }
+                    },
+                    "refId": "metric_17",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "playground-prometheus"
+                      },
+                      "spec": {
+                        "expr": "(100 * playground_dns_resolution_failed) and on () playground_scenario{scenario=\"${case}\",scenario=~\"dns-error\"}",
+                        "legendFormat": "DNS failures",
+                        "range": true
+                      }
+                    },
+                    "refId": "metric_18",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "playground-prometheus"
+                      },
+                      "spec": {
+                        "expr": "(100 * playground_dns_unexpected_address) and on () playground_scenario{scenario=\"${case}\",scenario=~\"dns-random\"}",
+                        "legendFormat": "Unexpected DNS address",
+                        "range": true
+                      }
+                    },
+                    "refId": "metric_19",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "playground-prometheus"
+                      },
+                      "spec": {
+                        "expr": "(100 * playground_dns_static_address) and on () playground_scenario{scenario=\"${case}\",scenario=~\"dns-static\"}",
+                        "legendFormat": "Configured DNS address",
+                        "range": true
+                      }
+                    },
+                    "refId": "metric_20",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "playground-prometheus"
+                      },
+                      "spec": {
+                        "expr": "(rate(playground_stress_cpu_seconds_total[6s])) and on () playground_scenario{scenario=\"${case}\",scenario=~\"stress-cpu\"}",
+                        "legendFormat": "Container CPU usage",
+                        "range": true
+                      }
+                    },
+                    "refId": "metric_21",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "playground-prometheus"
+                      },
+                      "spec": {
+                        "expr": "(playground_stress_anonymous_memory_bytes) and on () playground_scenario{scenario=\"${case}\",scenario=~\"stress-memory\"}",
+                        "legendFormat": "Container anonymous memory",
+                        "range": true
+                      }
+                    },
+                    "refId": "metric_22",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "timeseries",
+            "version": "",
+            "spec": {
+              "options": {
+                "legend": {
+                  "displayMode": "list",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "tooltip": {
+                  "mode": "multi"
+                }
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "min": 0,
+                  "color": {
+                    "mode": "fixed",
+                    "fixedColor": "light-blue"
+                  },
+                  "custom": {
+                    "fillOpacity": 12,
+                    "lineWidth": 2,
+                    "spanNulls": false
+                  }
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byFrameRefID",
+                      "options": "metric_A"
+                    },
+                    "properties": [
+                      {
+                        "id": "unit",
+                        "value": "ms"
+                      },
+                      {
+                        "id": "custom.axisLabel",
+                        "value": "HTTP request latency"
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byFrameRefID",
+                      "options": "metric_B"
+                    },
+                    "properties": [
+                      {
+                        "id": "unit",
+                        "value": "percent"
+                      },
+                      {
+                        "id": "custom.axisLabel",
+                        "value": "UDP packet loss"
+                      },
+                      {
+                        "id": "max",
+                        "value": 100
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "palette-classic"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byFrameRefID",
+                      "options": "metric_C"
+                    },
+                    "properties": [
+                      {
+                        "id": "unit",
+                        "value": "bps"
+                      },
+                      {
+                        "id": "custom.axisLabel",
+                        "value": "UDP receive throughput"
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byFrameRefID",
+                      "options": "metric_D"
+                    },
+                    "properties": [
+                      {
+                        "id": "unit",
+                        "value": "percent"
+                      },
+                      {
+                        "id": "custom.axisLabel",
+                        "value": "Duplicate UDP packets"
+                      },
+                      {
+                        "id": "max",
+                        "value": 100
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byFrameRefID",
+                      "options": "metric_E"
+                    },
+                    "properties": [
+                      {
+                        "id": "unit",
+                        "value": "percent"
+                      },
+                      {
+                        "id": "custom.axisLabel",
+                        "value": "UDP payload checksum errors"
+                      },
+                      {
+                        "id": "max",
+                        "value": 100
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byFrameRefID",
+                      "options": "metric_F"
+                    },
+                    "properties": [
+                      {
+                        "id": "unit",
+                        "value": "short"
+                      },
+                      {
+                        "id": "custom.axisLabel",
+                        "value": "UDP reachable"
+                      },
+                      {
+                        "id": "max",
+                        "value": 1
+                      },
+                      {
+                        "id": "custom.lineInterpolation",
+                        "value": "stepAfter"
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byFrameRefID",
+                      "options": "metric_G"
+                    },
+                    "properties": [
+                      {
+                        "id": "unit",
+                        "value": "ms"
+                      },
+                      {
+                        "id": "custom.axisLabel",
+                        "value": "UDP one-way delay"
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byFrameRefID",
+                      "options": "metric_H"
+                    },
+                    "properties": [
+                      {
+                        "id": "unit",
+                        "value": "short"
+                      },
+                      {
+                        "id": "custom.axisLabel",
+                        "value": "HTTP probe success"
+                      },
+                      {
+                        "id": "max",
+                        "value": 1
+                      },
+                      {
+                        "id": "custom.lineInterpolation",
+                        "value": "stepAfter"
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byFrameRefID",
+                      "options": "metric_I"
+                    },
+                    "properties": [
+                      {
+                        "id": "unit",
+                        "value": "short"
+                      },
+                      {
+                        "id": "custom.axisLabel",
+                        "value": "Pod Ready"
+                      },
+                      {
+                        "id": "max",
+                        "value": 1
+                      },
+                      {
+                        "id": "custom.lineInterpolation",
+                        "value": "stepAfter"
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "palette-classic"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byFrameRefID",
+                      "options": "metric_J"
+                    },
+                    "properties": [
+                      {
+                        "id": "unit",
+                        "value": "short"
+                      },
+                      {
+                        "id": "custom.axisLabel",
+                        "value": "Container restarts"
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byFrameRefID",
+                      "options": "metric_K"
+                    },
+                    "properties": [
+                      {
+                        "id": "unit",
+                        "value": "ms"
+                      },
+                      {
+                        "id": "custom.axisLabel",
+                        "value": "File read latency"
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byFrameRefID",
+                      "options": "metric_L"
+                    },
+                    "properties": [
+                      {
+                        "id": "unit",
+                        "value": "percent"
+                      },
+                      {
+                        "id": "custom.axisLabel",
+                        "value": "Read errors"
+                      },
+                      {
+                        "id": "max",
+                        "value": 100
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byFrameRefID",
+                      "options": "metric_M"
+                    },
+                    "properties": [
+                      {
+                        "id": "unit",
+                        "value": "short"
+                      },
+                      {
+                        "id": "custom.axisLabel",
+                        "value": "File permissions (octal)"
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byFrameRefID",
+                      "options": "metric_N"
+                    },
+                    "properties": [
+                      {
+                        "id": "unit",
+                        "value": "percent"
+                      },
+                      {
+                        "id": "custom.axisLabel",
+                        "value": "Read content mismatch"
+                      },
+                      {
+                        "id": "max",
+                        "value": 100
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byFrameRefID",
+                      "options": "metric_14"
+                    },
+                    "properties": [
+                      {
+                        "id": "unit",
+                        "value": "percent"
+                      },
+                      {
+                        "id": "custom.axisLabel",
+                        "value": "HTTP failures"
+                      },
+                      {
+                        "id": "max",
+                        "value": 100
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byFrameRefID",
+                      "options": "metric_15"
+                    },
+                    "properties": [
+                      {
+                        "id": "unit",
+                        "value": "ms"
+                      },
+                      {
+                        "id": "custom.axisLabel",
+                        "value": "HTTP response time"
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byFrameRefID",
+                      "options": "metric_16"
+                    },
+                    "properties": [
+                      {
+                        "id": "unit",
+                        "value": "percent"
+                      },
+                      {
+                        "id": "custom.axisLabel",
+                        "value": "Replaced response body"
+                      },
+                      {
+                        "id": "max",
+                        "value": 100
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byFrameRefID",
+                      "options": "metric_17"
+                    },
+                    "properties": [
+                      {
+                        "id": "unit",
+                        "value": "percent"
+                      },
+                      {
+                        "id": "custom.axisLabel",
+                        "value": "Patched response header"
+                      },
+                      {
+                        "id": "max",
+                        "value": 100
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byFrameRefID",
+                      "options": "metric_18"
+                    },
+                    "properties": [
+                      {
+                        "id": "unit",
+                        "value": "percent"
+                      },
+                      {
+                        "id": "custom.axisLabel",
+                        "value": "DNS failures"
+                      },
+                      {
+                        "id": "max",
+                        "value": 100
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byFrameRefID",
+                      "options": "metric_19"
+                    },
+                    "properties": [
+                      {
+                        "id": "unit",
+                        "value": "percent"
+                      },
+                      {
+                        "id": "custom.axisLabel",
+                        "value": "Unexpected DNS address"
+                      },
+                      {
+                        "id": "max",
+                        "value": 100
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byFrameRefID",
+                      "options": "metric_20"
+                    },
+                    "properties": [
+                      {
+                        "id": "unit",
+                        "value": "percent"
+                      },
+                      {
+                        "id": "custom.axisLabel",
+                        "value": "Configured DNS address"
+                      },
+                      {
+                        "id": "max",
+                        "value": 100
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byFrameRefID",
+                      "options": "metric_21"
+                    },
+                    "properties": [
+                      {
+                        "id": "unit",
+                        "value": "short"
+                      },
+                      {
+                        "id": "custom.axisLabel",
+                        "value": "Container CPU usage"
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byFrameRefID",
+                      "options": "metric_22"
+                    },
+                    "properties": [
+                      {
+                        "id": "unit",
+                        "value": "bytes"
+                      },
+                      {
+                        "id": "custom.axisLabel",
+                        "value": "Container anonymous memory"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "panel-3": {
+        "kind": "Panel",
+        "spec": {
+          "id": 3,
+          "title": "Probe availability",
+          "description": "Availability of the workload or probe for the selected case.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "playground-prometheus"
+                      },
+                      "spec": {
+                        "expr": "probe_success{job=\"podinfo\"} and on () playground_scenario{scenario=\"${case}\",scenario=~\"network-delay|pod-.*\"}",
+                        "legendFormat": "HTTP probe",
+                        "range": true
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "playground-prometheus"
+                      },
+                      "spec": {
+                        "expr": "up{job=\"network-probe\"} and on () playground_scenario{scenario=\"${case}\",kind=\"NetworkChaos\",scenario!=\"network-delay\"}",
+                        "legendFormat": "UDP probe",
+                        "range": true
+                      }
+                    },
+                    "refId": "B",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "playground-prometheus"
+                      },
+                      "spec": {
+                        "expr": "up{job=\"io-probe\"} and on () playground_scenario{scenario=\"${case}\",kind=\"IOChaos\"}",
+                        "legendFormat": "I/O probe",
+                        "range": true
+                      }
+                    },
+                    "refId": "C",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "playground-prometheus"
+                      },
+                      "spec": {
+                        "expr": "up{job=\"http-probe\"} and on () playground_scenario{scenario=\"${case}\",kind=\"HTTPChaos\"}",
+                        "legendFormat": "http-probe",
+                        "range": true
+                      }
+                    },
+                    "refId": "3",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "playground-prometheus"
+                      },
+                      "spec": {
+                        "expr": "up{job=\"dns-probe\"} and on () playground_scenario{scenario=\"${case}\",kind=\"DNSChaos\"}",
+                        "legendFormat": "dns-probe",
+                        "range": true
+                      }
+                    },
+                    "refId": "4",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "playground-prometheus"
+                      },
+                      "spec": {
+                        "expr": "up{job=\"stress-probe\"} and on () playground_scenario{scenario=\"${case}\",kind=\"StressChaos\"}",
+                        "legendFormat": "stress-probe",
+                        "range": true
+                      }
+                    },
+                    "refId": "5",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "timeseries",
+            "version": "",
+            "spec": {
+              "options": {
+                "legend": {
+                  "showLegend": false
+                },
+                "tooltip": {
+                  "mode": "single"
+                }
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "min": 0,
+                  "max": 1,
+                  "color": {
+                    "mode": "fixed",
+                    "fixedColor": "green"
+                  },
+                  "custom": {
+                    "lineInterpolation": "stepAfter",
+                    "lineWidth": 2
+                  }
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-4": {
+        "kind": "Panel",
+        "spec": {
+          "id": 4,
+          "title": "Experiment details",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "text",
+            "version": "13.0.3",
+            "spec": {
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+              },
+              "options": {
+                "mode": "html",
+                "content": "<iframe title=\"Chaos Dashboard experiment details\" src=\"/chaos-dashboard/current?case=${case:percentencode}\" style=\"display:block;width:100%;height:100%;min-height:640px;border:0\"></iframe>"
+              }
+            }
+          }
+        }
+      }
+    },
+    "layout": {
+      "kind": "TabsLayout",
+      "spec": {
+        "tabs": [
+          {
+            "kind": "TabsLayoutTab",
+            "spec": {
+              "title": "Playground",
+              "layout": {
+                "kind": "GridLayout",
+                "spec": {
+                  "items": [
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 0,
+                        "y": 0,
+                        "width": 24,
+                        "height": 3,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-1"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 0,
+                        "y": 3,
+                        "width": 24,
+                        "height": 12,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-2"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 0,
+                        "y": 15,
+                        "width": 24,
+                        "height": 6,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-3"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "kind": "TabsLayoutTab",
+            "spec": {
+              "title": "Chaos Dashboard",
+              "layout": {
+                "kind": "GridLayout",
+                "spec": {
+                  "items": [
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 0,
+                        "y": 0,
+                        "width": 24,
+                        "height": 22,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-4"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "links": [],
+    "liveNow": false,
+    "preload": false,
+    "tags": [],
+    "timeSettings": {
+      "timezone": "browser",
+      "from": "now-5m",
+      "to": "now",
+      "autoRefresh": "5s",
+      "autoRefreshIntervals": [
+        "5s",
+        "10s",
+        "30s",
+        "1m"
+      ],
+      "hideTimepicker": false,
+      "fiscalYearStartMonth": 0
+    },
+    "title": "Chaos Mesh Playground",
+    "variables": [
+      {
+        "kind": "CustomVariable",
+        "spec": {
+          "name": "kind",
+          "query": "DNSChaos,HTTPChaos,IOChaos,NetworkChaos,PodChaos,StressChaos",
+          "current": {
+            "text": "NetworkChaos",
+            "value": "NetworkChaos"
+          },
+          "options": [
+            {
+              "selected": false,
+              "text": "DNSChaos",
+              "value": "DNSChaos"
+            },
+            {
+              "selected": false,
+              "text": "HTTPChaos",
+              "value": "HTTPChaos"
+            },
+            {
+              "selected": false,
+              "text": "IOChaos",
+              "value": "IOChaos"
+            },
+            {
+              "selected": true,
+              "text": "NetworkChaos",
+              "value": "NetworkChaos"
+            },
+            {
+              "selected": false,
+              "text": "PodChaos",
+              "value": "PodChaos"
+            },
+            {
+              "selected": false,
+              "text": "StressChaos",
+              "value": "StressChaos"
+            }
+          ],
+          "multi": false,
+          "includeAll": false,
+          "label": "Chaos type",
+          "hide": "dontHide",
+          "skipUrlSync": false,
+          "allowCustomValue": true
+        }
+      },
+      {
+        "kind": "QueryVariable",
+        "spec": {
+          "name": "case",
+          "current": {
+            "text": "Delay · 200 ms",
+            "value": "network-delay"
+          },
+          "label": "Action",
+          "hide": "dontHide",
+          "refresh": "onDashboardLoad",
+          "skipUrlSync": false,
+          "query": {
+            "kind": "DataQuery",
+            "group": "prometheus",
+            "version": "v0",
+            "datasource": {
+              "name": "playground-prometheus"
+            },
+            "spec": {
+              "query": "query_result(playground_scenario{kind=\"${kind}\"})",
+              "refId": "PrometheusVariableQueryEditor-VariableQuery"
+            }
+          },
+          "regex": "/(?:scenario=\"(?<value>[^\"]+)\"|title=\"(?<text>[^\"]+)\")/g",
+          "sort": "disabled",
+          "definition": "query_result(playground_scenario{kind=\"${kind}\"})",
+          "options": [],
+          "multi": false,
+          "includeAll": false,
+          "allowCustomValue": true
+        }
+      }
+    ]
+  },
+  "metadata": {
+    "name": "chaos-mesh-playground"
+  }
+}

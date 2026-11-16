@@ -1,0 +1,41 @@
+{
+  "apiVersion": "chaos-mesh.org/v1alpha1",
+  "kind": "IOChaos",
+  "metadata": {
+    "name": "io-mistake",
+    "namespace": "playground-demo",
+    "labels": {
+      "app.kubernetes.io/managed-by": "playground-runner"
+    },
+    "annotations": {
+      "playground.chaos-mesh.org/title": "Mistake · altered reads"
+    }
+  },
+  "spec": {
+    "action": "mistake",
+    "mode": "all",
+    "selector": {
+      "namespaces": [
+        "playground-demo"
+      ],
+      "labelSelectors": {
+        "app": "playground-io-probe"
+      }
+    },
+    "duration": "30s",
+    "containerNames": [
+      "io"
+    ],
+    "volumePath": "/demo-data",
+    "path": "/demo-data/sample.bin",
+    "percent": 100,
+    "methods": [
+      "read"
+    ],
+    "mistake": {
+      "filling": "zero",
+      "maxOccurrences": 3,
+      "maxLength": 8
+    }
+  }
+}
